@@ -1,0 +1,16 @@
+name: Update v1.1 release notes
+on:
+  push:
+    branches: [main]
+    paths: [docs/releases/V1.1.md]
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update release description
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit V1.1 --notes-file docs/releases/V1.1.md
