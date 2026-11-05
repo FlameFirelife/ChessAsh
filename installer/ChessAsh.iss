@@ -210,7 +210,7 @@ end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
-  Directory, Uninstaller: String;
+  Directory, Uninstaller, TemporaryUninstaller: String;
   ExitCode: Integer;
 begin
   Result := '';
@@ -221,7 +221,12 @@ begin
   end;
   if KnownLegacyInstallation(HKCU, Directory, Uninstaller) then begin
     Log('Migrating the earlier per-user ChessAsh installer.');
-    if not Exec(Uninstaller, '/S --updated _?=' + Directory, Directory, SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+    TemporaryUninstaller := ExpandConstant('{tmp}\ChessAsh-Legacy-Uninstall.exe');
+    if not FileCopy(Uninstaller, TemporaryUninstaller, False) then begin
+      Result := 'The previous ChessAsh uninstaller could not be prepared. Close ChessAsh and try again.';
+      Exit;
+    end;
+    if not Exec(TemporaryUninstaller, '/S /currentuser --updated _?=' + Directory, ExpandConstant('{tmp}'), SW_HIDE, ewWaitUntilTerminated, ExitCode) then
       Result := 'The previous ChessAsh uninstaller could not run. Close ChessAsh and try again.'
     else if ExitCode <> 0 then
       Result := 'The previous ChessAsh installer could not be upgraded (exit ' + IntToStr(ExitCode) + '). Close ChessAsh and try again.';

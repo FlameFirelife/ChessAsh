@@ -47,6 +47,10 @@ try {
 } finally {
     $uninstaller = Join-Path $install 'unins000.exe'
     if (Test-Path -LiteralPath $uninstaller) { Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -WindowStyle Hidden }
-    elseif (Test-Path -LiteralPath (Join-Path $install 'Uninstall ChessAsh.exe')) { Start-Process -FilePath (Join-Path $install 'Uninstall ChessAsh.exe') -ArgumentList @('/S','--updated',"_?=$install") -Wait -WindowStyle Hidden }
+    elseif (Test-Path -LiteralPath (Join-Path $install 'Uninstall ChessAsh.exe')) {
+        $oldUninstaller = Join-Path $testRoot 'legacy-uninstaller.exe'
+        Copy-Item -LiteralPath (Join-Path $install 'Uninstall ChessAsh.exe') -Destination $oldUninstaller -Force
+        Start-Process -FilePath $oldUninstaller -ArgumentList @('/S','/currentuser','--updated',"_?=$install") -WorkingDirectory $testRoot -Wait -WindowStyle Hidden
+    }
     Remove-Item -LiteralPath $sentinel -Force -ErrorAction SilentlyContinue
 }
