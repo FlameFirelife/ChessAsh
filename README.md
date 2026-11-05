@@ -1,6 +1,7 @@
 # ChessAsh
 
 Free post-game chess analysis for Windows and Android. Import your finished Chess.com games or open a PGN, review the turning points and try a better move.
+It is an evolving 100% free alternative for Game Reviews.
 
 Stockfish runs on your device. The Windows app also uses [Foxash](https://github.com/FlameFirelife/foxash/) for its review rules and can connect to Ollama or an API tutor you choose.
 
