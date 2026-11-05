@@ -1,0 +1,119 @@
+{
+  "updated": "2026-11-05",
+  "assets": [
+    {
+      "file": "fonts/atkinson-hyperlegible-mono-latin-ext.woff2",
+      "url": "https://fonts.gstatic.com/s/atkinsonhyperlegiblemono/v8/tss4AoFBci4C4gvhPXrt3wjT1MqSzhA4t7IIcncBiwKjhFyRHQ.woff2",
+      "sha256": "3fa1fa7e990377c87018d62f356cc42b8db39fd88cee5724431e9f0d63b7f32f"
+    },
+    {
+      "file": "fonts/atkinson-hyperlegible-mono-latin.woff2",
+      "url": "https://fonts.gstatic.com/s/atkinsonhyperlegiblemono/v8/tss4AoFBci4C4gvhPXrt3wjT1MqSzhA4t7IIcncBiwKthFw.woff2",
+      "sha256": "2706b1ee4f452e744ea91f7e4908cbde9c5d35521bf5ffffc71a382a2de89613"
+    },
+    {
+      "file": "fonts/Atkinson-Hyperlegible-Mono-OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/atkinsonhyperlegiblemono/OFL.txt",
+      "sha256": "1ebb31cf7393164f20d10c1d48406cddb5314feff8465531cf1e4ba37e9dd740"
+    },
+    {
+      "file": "fonts/host-grotesk-latin-ext.woff2",
+      "url": "https://fonts.gstatic.com/s/hostgrotesk/v5/co3BmWBnlCJ3U42vbbfdwMjZqljm0U0.woff2",
+      "sha256": "194782c85ee857df4373f6c246e4da9c0ba3cccf85756f6d26e1e78de3479495"
+    },
+    {
+      "file": "fonts/host-grotesk-latin.woff2",
+      "url": "https://fonts.gstatic.com/s/hostgrotesk/v5/co3BmWBnlCJ3U42vbbfdwMjZpFjm.woff2",
+      "sha256": "ce9c9db8a488852eb7e4a52f51fd8ce0c93ef61a8d3bfa054b509ec92958dcfe"
+    },
+    {
+      "file": "fonts/Host-Grotesk-OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/hostgrotesk/OFL.txt",
+      "sha256": "f04ad0873907546e160c7a79b1e42bd3cd380c7e5ee4c1b3c11f43faca1675e7"
+    },
+    {
+      "file": "pieces/wP.svg",
+      "origin": "Original ChessAsh artwork",
+      "source": "scripts/create-pieces.mjs",
+      "license": "GPL-3.0-or-later",
+      "sha256": "d94740039831f7abecbc274cf405e549fff6d880fe9109f03bd5bfc4235c3f01"
+    },
+    {
+      "file": "pieces/wR.svg",
+      "origin": "Original ChessAsh artwork",
+      "source": "scripts/create-pieces.mjs",
+      "license": "GPL-3.0-or-later",
+      "sha256": "5789e5250c3fae492bf486d1c1ac232b5a35bcabc807f98771991dabee9b7b8f"
+    },
+    {
+      "file": "pieces/wB.svg",
+      "origin": "Original ChessAsh artwork",
+      "source": "scripts/create-pieces.mjs",
+      "license": "GPL-3.0-or-later",
+      "sha256": "3b44ff2253c08838044eadcef3482c8ce254297b2ea1ea624fc59aff4597c0a0"
+    },
+    {
+      "file": "pieces/wN.svg",
+      "origin": "Original ChessAsh artwork",
+      "source": "scripts/create-pieces.mjs",
+      "license": "GPL-3.0-or-later",
+      "sha256": "3c4a77e3ba53ffd97dbdd333c9da2b1297c9af3ac7ff87934606dbd9fbd58800"
+    },
+    {
+      "file": "pieces/wQ.svg",
+      "origin": "Original ChessAsh artwork",
+      "source": "scripts/create-pieces.mjs",
+      "license": "GPL-3.0-or-later",
+      "sha256": "e0b471f8bf883661c57942436927151972e35f2cc3e668f833932f40cb6eab90"
+    },
+    {
+      "file": "pieces/wK.svg",
+      "origin": "Original ChessAsh artwork",
+      "source": "scripts/create-pieces.mjs",
+      "license": "GPL-3.0-or-later",
+      "sha256": "326109a53091d132afc1cff9e19804b8688946c1f22660428baf4c6b86d3ce96"
+    },
+    {
+      "file": "pieces/bP.svg",
+      "origin": "Original ChessAsh artwork",
+      "source": "scripts/create-pieces.mjs",
+      "license": "GPL-3.0-or-later",
+      "sha256": "03a3621f975ec0fe4af8376808a55f7107f3cc6f87e59cd959be3deefbabd6f4"
+    },
+    {
+      "file": "pieces/bR.svg",
+      "origin": "Original ChessAsh artwork",
+      "source": "scripts/create-pieces.mjs",
+      "license": "GPL-3.0-or-later",
+      "sha256": "55bc1219e7a9cfda68a8d3b67872d2203f50b93c65c962fceeb98db0ff8197ff"
+    },
+    {
+      "file": "pieces/bB.svg",
+      "origin": "Original ChessAsh artwork",
+      "source": "scripts/create-pieces.mjs",
+      "license": "GPL-3.0-or-later",
+      "sha256": "da51fb25139bf7308fdfbddb41fa0dbb5bce6deb0b1517f011043e5173735717"
+    },
+    {
+      "file": "pieces/bN.svg",
+      "origin": "Original ChessAsh artwork",
+      "source": "scripts/create-pieces.mjs",
+      "license": "GPL-3.0-or-later",
+      "sha256": "4acb321823df7547e1a2656b0295ad8202432c0510a859cc2230b4d40e8d7f52"
+    },
+    {
+      "file": "pieces/bQ.svg",
+      "origin": "Original ChessAsh artwork",
+      "source": "scripts/create-pieces.mjs",
+      "license": "GPL-3.0-or-later",
+      "sha256": "b1dfec3f7882a076abc6828bebc1eb5a13f6fb010c35980d44fd4c28b201eef0"
+    },
+    {
+      "file": "pieces/bK.svg",
+      "origin": "Original ChessAsh artwork",
+      "source": "scripts/create-pieces.mjs",
+      "license": "GPL-3.0-or-later",
+      "sha256": "7c1ea979141b11f3b060413f8983351b1598a796c4934fafa6aed52337ee1646"
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+read "facts.json" into request
+define rows = []
+define index = 1
+define blunders = 0
+define mistakes = 0
+define misses = 0
+define inaccuracies = 0
+define bests = 0
+define excellents = 0
+define goods = 0
+define books = 0
+define greats = 0
+define sacrifices = 0
+
+function classify(move, rules) {
+    when move["book"] { give "book" }
+    when move["verified"] and move["sacrifice"] and move["playedBest"] and move["loss"] <= rules["excellent"] { give "sacrifice" }
+    when move["verified"] and move["critical"] and move["playedBest"] and move["loss"] <= rules["excellent"] { give "great" }
+    when move["loss"] >= rules["blunder"] { give "blunder" }
+    when move["missedChance"] and move["loss"] >= rules["mistake"] { give "miss" }
+    when move["loss"] >= rules["mistake"] { give "mistake" }
+    when move["loss"] >= rules["inaccuracy"] { give "inaccuracy" }
+    when move["playedBest"] { give "best" }
+    when move["loss"] <= rules["excellent"] { give "excellent" }
+    give "good"
+}
+
+function template(label) {
+    when label == "book" { give "opening" }
+    when label == "sacrifice" { give "material-investment" }
+    when label == "great" { give "critical-choice" }
+    when label == "miss" { give "missed-opportunity" }
+    when label == "blunder" or label == "mistake" or label == "inaccuracy" { give "compare-continuation" }
+    give "sound-move"
+}
+
+function hint(label) {
+    when label == "miss" { give "Look for a forcing move: a check, capture or threat." }
+    when label == "blunder" or label == "mistake" { give "Check what your opponent can force after your move." }
+    when label == "inaccuracy" { give "Compare your active options before committing." }
+    when label == "sacrifice" { give "Look for compensation beyond the material count." }
+    when label == "great" { give "Compare the alternatives to the strongest move." }
+    give "Consider the purpose of the move and the opponent's reply."
+}
+
+loop review[
+    when index > request["count"] { end review }
+    define move = request["moves"][index]
+    define label = classify(move, request["rules"])
+    define key = label == "sacrifice" or label == "great" or label == "inaccuracy" or label == "mistake" or label == "blunder" or label == "miss"
+    add [label, key, template(label), hint(label)] to rows
+    when label == "blunder" { blunders = blunders + 1 }
+    when label == "mistake" { mistakes = mistakes + 1 }
+    when label == "miss" { misses = misses + 1 }
+    when label == "inaccuracy" { inaccuracies = inaccuracies + 1 }
+    when label == "best" { bests = bests + 1 }
+    when label == "excellent" { excellents = excellents + 1 }
+    when label == "good" { goods = goods + 1 }
+    when label == "book" { books = books + 1 }
+    when label == "great" { greats = greats + 1 }
+    when label == "sacrifice" { sacrifices = sacrifices + 1 }
+    index = index + 1
+]
+define counts = [books, bests, excellents, goods, inaccuracies, mistakes, blunders, misses, greats, sacrifices]
+define output = [rows, counts]
+save output to "review.json"

@@ -1,0 +1,8 @@
+{
+  "name": "ChessAsh standard",
+  "version": 1,
+  "excellent": 15,
+  "inaccuracy": 45,
+  "mistake": 100,
+  "blunder": 250
+}

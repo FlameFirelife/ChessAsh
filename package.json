@@ -1,0 +1,77 @@
+{
+  "name": "chessash",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local chess analysis and Foxash-powered review",
+  "author": "FlameDev",
+  "license": "GPL-3.0-or-later",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "prepare:engine": "node scripts/prepare-engine.mjs",
+    "desktop": "electron .",
+    "package:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows.ps1",
+    "android:sync": "npm run build && cap sync android",
+    "android:build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/android-build.ps1",
+    "android:release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/android-release.ps1",
+    "package:android": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "chess.js": "1.4.0",
+    "lucide-react": "^0.468.0",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/android": "8.6.0",
+    "@capacitor/app": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/node": "^24.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "vite": "^7.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0",
+    "playwright": "^1.56.0",
+    "stockfish": "19.0.1",
+    "electron": "45.2.3",
+    "electron-builder": "^26.0.0",
+    "@capacitor/cli": "8.6.0"
+  },
+  "build": {
+    "appId": "dev.flamedev.chessash",
+    "productName": "ChessAsh",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "build/icon.ico",
+      "!node_modules/**"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/foxash",
+        "to": "foxash"
+      },
+      {
+        "from": "rules",
+        "to": "rules"
+      },
+      {
+        "from": "THIRD_PARTY_NOTICES.md",
+        "to": "THIRD_PARTY_NOTICES.md"
+      }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "signExecutable": false
+    }
+  }
+}
