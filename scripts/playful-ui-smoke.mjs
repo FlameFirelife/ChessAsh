@@ -21,11 +21,11 @@ try{
  await page.getByRole('button',{name:'Next move',exact:true}).click();assert.notEqual(await page.locator('.board-quality').getAttribute('aria-label'),currentLabel);
  const animation=await page.locator('.moving-piece').evaluateAll(pieces=>pieces.some(p=>p.getAnimations().some(a=>a.playState==='running')));
  await page.getByRole('button',{name:'Previous move',exact:true}).click();
- for(let i=0;i<3;i++)await page.getByRole('button',{name:'Hint',exact:true}).click();
+ assert.equal(await page.getByRole('button',{name:'Hint',exact:true}).count(),0);
+ await page.getByRole('button',{name:'Best move · before',exact:true}).click();
  await page.locator('line[data-suggestion]').waitFor({state:'attached'});
- assert.equal(await page.locator('.board-quality').count(),0);
+ assert.equal(await page.locator('.board-quality').count(),1);
  await page.waitForTimeout(450);await page.screenshot({path:'work/qa/playful-review-desktop.png',fullPage:true,animations:'disabled'});
- await page.getByRole('button',{name:'Done',exact:true}).click();
  await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByLabel('Reduce motion',{exact:true}).check();await page.getByRole('button',{name:'Close dialog',exact:true}).click();
  assert.equal(await page.locator('.board-quality').evaluate(e=>getComputedStyle(e).animationName),'none');
  await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByLabel('Reduce motion',{exact:true}).uncheck();await page.getByRole('button',{name:'Close dialog',exact:true}).click();

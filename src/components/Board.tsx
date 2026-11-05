@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Chess } from "chess.js";
 import type { Square } from "chess.js";
 import type { Label } from "../core";
@@ -10,6 +10,8 @@ export default function Board({
   flipped,
   onMove,
   arrow,
+  threat,
+  highlights = [],
   lastMove,
   quality,
   disabled = false,
@@ -18,6 +20,8 @@ export default function Board({
   flipped: boolean;
   onMove: (from: string, to: string, promotion?: string) => void;
   arrow?: string;
+  threat?: string;
+  highlights?: string[];
   lastMove?: string;
   quality?: { square: string; label: Label; name: string; key: string };
   disabled?: boolean;
@@ -30,6 +34,12 @@ export default function Board({
   const [drawn, setDrawn] = useState<string[]>([]);
   const [start, setStart] = useState<string | null>(null);
   const chess = useMemo(() => new Chess(fen), [fen]);
+  useEffect(() => {
+    setSelected(null);
+    setPromotion(null);
+    setDrawn([]);
+    setStart(null);
+  }, [fen]);
   const pieceState = useRef<{
     fen: string;
     views: PieceView[];
@@ -113,7 +123,7 @@ export default function Board({
             return (
               <button
                 key={sq + (quality?.square === sq ? quality.key : "")}
-                className={`square ${light ? "light" : "dark"} ${selected === sq ? "selected" : ""} ${lastMove && (lastMove.slice(0, 2) === sq || lastMove.slice(2, 4) === sq) ? "last" : ""} ${quality?.square === sq ? "quality-square quality-" + quality.label : ""}`}
+                className={`square ${light ? "light" : "dark"} ${selected === sq ? "selected" : ""} ${highlights.includes(sq) ? "review-focus" : ""} ${threat?.slice(2, 4) === sq ? "threat-target" : ""} ${lastMove && (lastMove.slice(0, 2) === sq || lastMove.slice(2, 4) === sq) ? "last" : ""} ${quality?.square === sq ? "quality-square quality-" + quality.label : ""}`}
                 aria-label={`${sq}${p ? " " + (p.color === "w" ? "White" : "Black") + " " + { p: "pawn", n: "knight", b: "bishop", r: "rook", q: "queen", k: "king" }[p.type] : ""}`}
                 onClick={() => choose(sq)}
                 draggable={!!p && !disabled}
@@ -221,6 +231,9 @@ export default function Board({
         )}
         <svg className="arrows" viewBox="0 0 800 800" aria-hidden="true">
           <defs>
+            <marker id="threat-head" markerWidth="4" markerHeight="4" refX="4" refY="2" orient="auto">
+              <path className="threat-head" d="M0,0 L4,2 L0,4 Z" />
+            </marker>
             <marker
               id="suggestion-head"
               markerWidth="4"
@@ -242,6 +255,7 @@ export default function Board({
               <path d="M0,0 L4,2 L0,4 Z" />
             </marker>
           </defs>
+          {threat && <line data-threat={threat} x1={xy(threat.slice(0, 2)).x} y1={xy(threat.slice(0, 2)).y} x2={xy(threat.slice(2, 4)).x} y2={xy(threat.slice(2, 4)).y} markerEnd="url(#threat-head)" />}
           {[...drawn, ...(arrow ? [arrow] : [])].map((a, i) => {
             const f = xy(a.slice(0, 2)),
               t = xy(a.slice(2, 4));

@@ -1,6 +1,7 @@
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import fs from 'node:fs/promises';
+const {version: appVersion} = JSON.parse(await fs.readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const exec=promisify(execFile),adb='work/android-sdk/platform-tools/adb.exe';
 const run=(...args)=>exec(adb,['-s','emulator-5554',...args],{maxBuffer:2*1024*1024});
 const dump=async()=>{await run('shell','uiautomator','dump','/sdcard/chessash-ui.xml');return(await run('shell','cat','/sdcard/chessash-ui.xml')).stdout;};
@@ -12,7 +13,7 @@ async function tapText(text,xml){
  if(!bounds)return false;
  await run('shell','input','tap',String(Math.round((+bounds[1]+ +bounds[3])/2)),String(Math.round((+bounds[2]+ +bounds[4])/2)));return true;
 }
-await run('install','-r','release/ChessAsh-1.0.0-android.apk');
+await run('install','-r',`release/ChessAsh-${appVersion}-android.apk`);
 await run('shell','am','force-stop','dev.flamedev.chessash');
 await run('shell','am','start','-n','dev.flamedev.chessash/.MainActivity');
 if(!await tapText('Explore a sample'))throw new Error('Release welcome did not load.');

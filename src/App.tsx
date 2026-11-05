@@ -15,7 +15,6 @@ import {
   RotateCw,
   Play,
   Square,
-  Lightbulb,
   Undo2,
   X,
   Search,
@@ -26,6 +25,8 @@ import {
   SlidersHorizontal,
   Trash2,
 } from "lucide-react";
+import { reviewCoaching } from "./core/coaching";
+import { version as appVersion } from "../package.json";
 import Board from "./components/Board";
 import Graph from "./components/Graph";
 import AccuracyScore from "./components/AccuracyScore";
@@ -129,50 +130,6 @@ async function download(name: string, text: string) {
   return true;
 }
 
-function briefExplanation(game: Game, r: MoveReview): string {
-  const before = new Chess(game.positions[r.ply - 1]);
-  const after = new Chess(game.positions[r.ply]);
-  if (after.isCheckmate()) return "Checkmate. The king has no way out.";
-  if (after.isStalemate())
-    return "This ends the game in stalemate. The opponent has no legal move but is not in check.";
-  let best = "";
-  try {
-    best = before.move({
-      from: r.best.slice(0, 2),
-      to: r.best.slice(2, 4),
-      promotion: r.best[4],
-    }).san;
-  } catch {}
-  if (r.label === "book") return "This follows a recognised opening sequence.";
-  if (r.label === "best")
-    return "You found the strongest move in this position.";
-  if (r.label === "excellent")
-    return "A strong move, very close to the best option.";
-  if (r.label === "good")
-    return best
-      ? "A sound move. " + best + " was a stronger option."
-      : "A sound move.";
-  if (r.label === "great")
-    return "You found a critical move. The alternatives were much weaker.";
-  if (r.label === "sacrifice")
-    return "A sound sacrifice. You give up material while keeping enough compensation.";
-  const capture = r.explanation.match(
-    /The reply [^.]+captures your [^.]+\./,
-  )?.[0];
-  if (capture) return capture + (best ? " Try " + best + " instead." : "");
-  if (r.loss >= 10000)
-    return "This allows a forced mate. Play through the line to see the threat.";
-  if (r.label === "miss")
-    return best
-      ? "You had a stronger opportunity with " +
-          best +
-          ". Try finding the idea."
-      : "There was a stronger opportunity here.";
-  return best
-    ? best + " gives you a stronger position. Try it and compare the replies."
-    : "Compare the continuation to see what changed.";
-}
-
 export default function App() {
   const [games, setGames] = useState<Game[]>([]),
     [ready, setReady] = useState(false),
@@ -194,8 +151,8 @@ export default function App() {
     [resultFilter, setResultFilter] = useState("all"),
     [timeFilter, setTimeFilter] = useState("all");
   const [short, setShort] = useState(true),
-    [hint, setHint] = useState(0),
-    [showBest, setShowBest] = useState(false),
+    [focusedSquare, setFocusedSquare] = useState<string | null>(null),
+    [playedView, setPlayedView] = useState(false),
     [retry, setRetry] = useState(false),
     [retryText, setRetryText] = useState("");
   const [branch, setBranch] = useState<string[]>([]),
@@ -227,9 +184,11 @@ export default function App() {
   const game = games.find((g) => g.id === activeId) || games[0];
   const results = game?.review?.results || [];
   const current = results.find((r) => r.ply === ply);
+  const coaching = game && current ? reviewCoaching(game, current) : undefined;
+  const reviewing = view === "review" && !!current && !branch.length;
   const initialFen = game?.positions[ply] || new Chess().fen();
   const effectiveFen =
-    retry && current
+    (retry || (reviewing && !playedView)) && current
       ? game!.positions[current.ply - 1]
       : branch.length && branchOrigin
         ? (() => {
@@ -339,8 +298,9 @@ export default function App() {
     document.documentElement.style.fontSize = prefs.font + "px";
   }, [prefs]);
   useEffect(() => {
-    setHint(0);
-    setShowBest(false);
+    setPlayedView(false);
+    setFocusedSquare(null);
+
     setRetry(false);
     setRetryText("");
     setBranch([]);
@@ -582,7 +542,7 @@ export default function App() {
           "Found it. Play through the continuation to see the idea.",
         );
         setRetry(false);
-        setShowBest(false);
+    
         preview([current.best], game.positions[current.ply - 1]);
         setBranchIndex(1);
         sound();
@@ -611,7 +571,7 @@ export default function App() {
           sound();
         } else {
           setRetryText(
-            "There is a stronger move. Try a hint or reveal the continuation.",
+            "There is a stronger move. Return to the review to compare it or play the continuation.",
           );
         }
       } catch (e) {
@@ -622,7 +582,7 @@ export default function App() {
     try {
       const c = new Chess(effectiveFen);
       c.move({ from, to, promotion });
-      const origin = branch.length ? branchOrigin : initialFen;
+      const origin = branch.length ? branchOrigin : effectiveFen;
       const next = [...branch.slice(0, branchIndex), uci];
       setBranchOrigin(origin);
       setBranch(next);
@@ -669,7 +629,7 @@ export default function App() {
         .slice(0, 3)
         .sort((a, b) => a.ply - b.ply)
     : results.filter((r) => r.key);
-  const activeScore = engineResult?.score ?? current?.after ?? 0;
+  const activeScore = engineResult?.score ?? (reviewing && !playedView ? current?.before : current?.after) ?? 0;
   const lastMove = branchIndex ? branch[branchIndex - 1] : current?.move;
   const pawnName = game?.headers.White || "White",
     blackName = game?.headers.Black || "Black";
@@ -686,7 +646,7 @@ export default function App() {
             <Flame size={23} />
           </span>
           Chess<span>Ash</span>
-          <small>1.0</small>
+          <small>{appVersion.replace(/\.0$/, "")}</small>
         </button>
         <nav aria-label="Main navigation">
           <button
@@ -839,22 +799,16 @@ export default function App() {
               </div>
               {view === "review" && (
                 <ReviewMessage
+                  onSquare={setFocusedSquare}
                   result={current}
                   text={
                     current
-                      ? briefExplanation(game, current)
+                      ? coaching!.text
                       : results.length
                         ? "Your review is ready. Let’s look at a turning point."
                         : "Let’s look at this game together. Start a review to find the moments worth practising."
                   }
-                  detail={current?.explanation}
-                  hint={
-                    hint > 0
-                      ? current?.hints[
-                          Math.min(hint - 1, current.hints.length - 1)
-                        ]
-                      : undefined
-                  }
+                  detail={coaching?.best}
                   retryText={retryText}
                   retry={retry}
                   busy={busy}
@@ -863,32 +817,31 @@ export default function App() {
                     setBranch([]);
                     setRetry(true);
                     setRetryText("Find a strong move on the board.");
-                    setShowBest(false);
-                  }}
-                  onHint={() => {
-                    if (!current) return;
-                    setBranch([]);
-                    setRetry(true);
-                    setRetryText("");
-                    setShowBest(false);
-                    setHint((h) => Math.min(h + 1, current.hints.length));
+                
                   }}
                   onLine={() => {
                     if (!current) return;
-                    setShowBest(true);
+                
                     setRetry(false);
                     preview(current.pv);
                   }}
                   onExit={() => {
                     setRetry(false);
                     setRetryText("");
-                    setHint(0);
+                    setPlayedView(false);
                   }}
                   onStart={() => {
                     setBranch([]);
                     setPly(keyResults[0]?.ply || 1);
                   }}
                 />
+              )}
+              {reviewing && !retry && (
+                <div className="review-position-controls" aria-label="Review position">
+                  <button aria-pressed={!playedView} onClick={() => setPlayedView(false)}>Best move · before</button>
+                  <button aria-pressed={playedView} onClick={() => setPlayedView(true)}>Played move · after</button>
+                  <span>{playedView ? "After your move · red arrow shows a checked capture or check" : "Before your move · blue arrow shows the best move"}</span>
+                </div>
               )}
               <div className="player-strip">
                 <div className="player-avatar">{flipped ? "W" : "B"}</div>
@@ -920,19 +873,14 @@ export default function App() {
                   fen={effectiveFen}
                   flipped={flipped}
                   onMove={(f, t, p) => void move(f, t, p)}
-                  arrow={
-                    prefs.arrows &&
-                    current &&
-                    effectiveFen === game.positions[current.ply - 1] &&
-                    (showBest || (retry && hint >= current.hints.length))
-                      ? current.best
-                      : undefined
-                  }
-                  lastMove={lastMove}
+                  arrow={prefs.arrows && reviewing && !retry && !playedView ? current?.best : undefined}
+                  threat={prefs.arrows && reviewing && !retry && playedView ? coaching?.threat : undefined}
+                  highlights={[...(focusedSquare ? [focusedSquare] : []), ...(reviewing && !retry ? playedView ? coaching?.targets || [] : current?.best ? [current.best.slice(0, 2), current.best.slice(2, 4)] : [] : [])]}
+                  lastMove={reviewing && !playedView ? undefined : lastMove}
                   quality={
                     current && !retry && !branch.length
                       ? {
-                          square: current.move.slice(2, 4),
+                          square: current.move.slice(playedView ? 2 : 0, playedView ? 4 : 2),
                           label: current.label,
                           name: LABEL_INFO[current.label].name,
                           key: game.id + ":" + ply + ":" + current.label,

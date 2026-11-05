@@ -1,5 +1,8 @@
 apply plugin: 'com.android.application'
 
+def chessashPackage = new groovy.json.JsonSlurper().parse(rootProject.file('../package.json'))
+def chessashRelease = new groovy.json.JsonSlurper().parse(rootProject.file('../build/release.json'))
+
 android {
     namespace = "dev.flamedev.chessash"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +10,8 @@ android {
         applicationId "dev.flamedev.chessash"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode = (project.findProperty('chessashVersionCode') ?: '1').toString().toInteger()
-        versionName = (project.findProperty('chessashVersion') ?: '1.0.0').toString()
+        versionCode = (project.findProperty('chessashVersionCode') ?: chessashRelease.androidVersionCode).toString().toInteger()
+        versionName = (project.findProperty('chessashVersion') ?: chessashPackage.version).toString()
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

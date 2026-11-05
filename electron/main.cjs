@@ -44,7 +44,7 @@ app.whenReady().then(() => {
     if (cached?.expires > Date.now()) return cached.value;
     if (apiPending.has(cacheKey)) return apiPending.get(cacheKey);
     const request = (async () => {
-      const headers = { 'User-Agent': 'ChessAsh/1.0 (independent local chess analysis)' };
+      const headers = { 'User-Agent': `ChessAsh/${app.getVersion()} (independent local chess analysis)` };
       if (cached?.etag) headers['If-None-Match'] = cached.etag;
       if (cached?.modified) headers['If-Modified-Since'] = cached.modified;
       const response = await fetch(parsed, { headers, redirect: 'error', signal: AbortSignal.timeout(30000) });

@@ -4,7 +4,7 @@ The interface and Stockfish WebAssembly worker are shared. Windows uses Electron
 
 ## Windows
 
-Run `Build-Windows.bat` for the Inno Setup installer. It prepares dependencies and assets automatically. The installer keeps a stable app identity, upgrades previous installations and adds a single user PATH entry. The executable company metadata is FlameDev; the installer publisher is FlameDev Studios. On npm versions that disable dependency install scripts, explicitly run `node node_modules/electron/install.js` before launching or packaging.
+Run `Build-Windows.bat` or `npm run package:win`. This uses Electron for the app directory and Inno Setup 6 for the installer. The scripts prepare assets and build the current interface before packaging. On npm versions that disable dependency install scripts, explicitly run `node node_modules/electron/install.js` before launching or packaging.
 
 `electron/main.cjs` owns the narrow native bridge. Renderer code has no Node access. Chess.com requests are restricted to the documented HTTPS public API. API keys are encrypted with Electron safeStorage for the current Windows user. Keys are never returned to the renderer after saving. Changing the configured endpoint discards the saved key, avoiding accidental disclosure to a different service.
 
@@ -22,9 +22,9 @@ The project sets minimum Android API 24. Stockfish also requires a recent Androi
 
 The source archive does not include downloaded SDKs or Gradle caches. Install Android Studio/SDK from the official Android Developers site, use SDK Manager to install platform 36 and build tools, set `ANDROID_SDK_ROOT` to that SDK directory and `JAVA_HOME` to JDK 21, then use the commands below. The project also supports a project-local SDK at `work/android-sdk` when supplied. Do not assume the author's local SDK path exists after extracting source elsewhere.
 
-Run `npm run build`, `npx cap sync android`, then `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/android-build.ps1`. Set `JAVA_HOME` and `ANDROID_SDK_ROOT` to your installations if they differ from the local defaults. SDK, Gradle caches, emulator data and downloaded tools live in `work/`; these are build tools, not release assets.
+Run `Build-Android.bat` for a signed release or `Build-Android.bat -Debug` for a debug APK. Set `JAVA_HOME` and `ANDROID_SDK_ROOT` to your installations if they differ from the local defaults. SDK, Gradle caches, emulator data and downloaded tools live in `work/`; these are build tools, not release assets.
 
-`Build-Android.bat` creates a fresh signed release APK. Direct `npm run android:release` also builds the current interface before packaging. It generates a new project-local self-signed signing key only when none exists, then reuses it for subsequent builds. This is an app update identity, not verified publisher code signing. The release APK is suitable for sideloading; Play Store publishing is a separate workflow.
+`npm run android:release` prepares the interface and creates the release APK. It generates a new project-local self-signed signing key only when none exists, then reuses it for subsequent builds. This is an app update identity, not verified publisher code signing. The release APK is suitable for sideloading; Play Store publishing is a separate workflow.
 
 The signing key is `.private/android-release.jks`; its randomly generated password is stored as `.private/android-signing-password.dpapi`, encrypted for the current Windows account. Both files are excluded from source control and must remain together. Do not delete or replace them if you want future APKs to update the installed app. The DPAPI password file is tied to this Windows account and machine: a portable backup requires recovering the password locally and storing it separately in a password manager before moving machines. Never upload `.private/` with public source or send its contents in chat. Back up the keystore and password securely.
 

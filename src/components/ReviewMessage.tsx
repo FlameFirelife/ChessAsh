@@ -1,4 +1,4 @@
-import { Lightbulb, Play, ChevronRight, RotateCcw } from "lucide-react";
+import { Play, ChevronRight, RotateCcw } from "lucide-react";
 import type { MoveReview } from "../core";
 import { LABEL_INFO } from "../core";
 import QualityIcon from "./QualityIcon";
@@ -13,31 +13,34 @@ export default function ReviewMessage({
   result,
   text,
   detail,
-  hint,
   retryText,
   retry,
   busy,
   hasReview,
   onTry,
-  onHint,
   onLine,
   onExit,
   onStart,
+  onSquare,
 }: {
   result?: MoveReview;
   text: string;
   detail?: string;
-  hint?: string;
   retryText: string;
   retry: boolean;
   busy: boolean;
   hasReview: boolean;
   onTry: () => void;
-  onHint: () => void;
   onLine: () => void;
   onExit: () => void;
   onStart: () => void;
+  onSquare: (square: string | null) => void;
 }) {
+  function linkedText(value: string) {
+    return value.split(/(\b[a-h][1-8]\b)/g).map((part, index) => /^[a-h][1-8]$/.test(part)
+      ? <button className="square-reference" key={index} onMouseEnter={() => onSquare(part)} onMouseLeave={() => onSquare(null)} onFocus={() => onSquare(part)} onBlur={() => onSquare(null)} onClick={() => onSquare(part)} aria-label={`Highlight ${part} on the board`}>{part}</button>
+      : part);
+  }
   return (
     <section
       className={`board-message ${result ? "message-" + result.label : ""}`}
@@ -58,8 +61,8 @@ export default function ReviewMessage({
             </span>
           )}
         </div>
-        <p className="speech-text">{text}</p>
-        {hint && <p className="hint">{hint}</p>}
+        <p className="speech-text">{linkedText(text)}</p>
+        {detail && !retry && <p className="best-move-description">{linkedText(detail)}</p>}
         {retryText && (
           <p className="retry-feedback" role="status">
             {retryText}
@@ -71,10 +74,6 @@ export default function ReviewMessage({
               <RotateCcw size={15} />
               Try again
             </button>
-            <button onClick={onHint} disabled={busy}>
-              <Lightbulb size={15} />
-              Hint
-            </button>
             <button onClick={onLine}>
               <Play size={15} />
               Show line
@@ -84,12 +83,7 @@ export default function ReviewMessage({
                 Done
               </button>
             )}
-            {detail && (
-              <details className="coach-detail">
-                <summary>Why?</summary>
-                <p>{detail}</p>
-              </details>
-            )}
+
           </div>
         ) : hasReview ? (
           <button className="primary" onClick={onStart}>

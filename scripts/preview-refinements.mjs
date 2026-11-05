@@ -12,7 +12,8 @@ try{
  const sacrifice=opera.review.results.find(r=>r.ply===29);
  assert.notEqual(sacrifice.label,'blunder');assert.notEqual(sacrifice.label,'mistake');
  await page.locator('.key-moves button').first().click();
- for(let i=0;i<3;i++)await page.getByRole('button',{name:'Hint',exact:true}).click();
+ assert.equal(await page.getByRole('button',{name:'Hint',exact:true}).count(),0);
+ await page.getByRole('button',{name:'Best move · before',exact:true}).click();
  await page.locator('line[data-suggestion]').waitFor({state:'attached'});
  await page.waitForTimeout(700);
  await page.screenshot({path:'work/qa/charcoal-green-desktop.png',fullPage:true});
