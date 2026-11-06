@@ -135,6 +135,15 @@ async function download(name: string, text: string) {
 
 export default function App() {
   const { language, setLanguage, t } = useLanguage();
+  useLayoutEffect(() => {
+    const header = document.querySelector<HTMLElement>('.app-header');
+    if (!header) return;
+    const measure = () => document.documentElement.style.setProperty('--app-header-height', `${header.getBoundingClientRect().height}px`);
+    const observer = new ResizeObserver(measure);
+    measure();
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
   const [games, setGames] = useState<Game[]>([]),
     [ready, setReady] = useState(false),
     [activeId, setActiveId] = useState(

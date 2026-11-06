@@ -18,13 +18,15 @@ Dependencies are installed with `npm ci` when missing or when the lockfile chang
 Build-Windows.bat
 ```
 
-Output: `release/ChessAsh-Setup-1.2.0.exe`, with the version taken from `package.json`.
+Output: `release/ChessAsh-Setup-1.2.5.exe`, with the version taken from `package.json`.
 
 Electron packages the application directory; Inno Setup creates the installer. The default installation is per user and does not need administrator rights. It adds the application directory to the user's PATH, offers a desktop shortcut and creates a Start menu entry. In a new terminal, `chessash` opens the app.
 
 The installer uses a stable application ID. Running a newer installer updates the existing installation. Games, notes and settings remain in the application's user-data directory. Uninstall removes the PATH entry only if this installer added it. Unrelated PATH entries remain untouched. The earlier NSIS build has a separate migration check in the installer.
 
-Installer source is in `installer/ChessAsh.iss`. Executable and installer branding comes from `package.json`, `build/release.json` and `build/icon.ico`. The default publisher is FlameDev Studios. A publisher name in file metadata does not code-sign the executable; these local builds are unsigned.
+Installer source is in `installer/ChessAsh.iss`. Executable and installer branding comes from `package.json`, `build/release.json` and `build/icon.ico`. The default publisher is FlameDev Studios. A publisher name in file metadata does not code-sign the executable.
+
+For a signed build, configure a trusted certificate's `CHESSASH_SIGNING_THUMBPRINT` and run `Build-Windows.bat -RequireSigned`. The build signs the app, installer and uninstaller and verifies the final installer. Without a configured identity, the default build warns and remains unsigned. There is currently no trusted Windows signing certificate installed on the development PC. See [SIGNING.md](SIGNING.md) for setup, verification and the distinction between publisher identity and SmartScreen reputation.
 
 ## Android APK
 
@@ -32,9 +34,11 @@ Installer source is in `installer/ChessAsh.iss`. Executable and installer brandi
 Build-Android.bat
 ```
 
-Output: `release/ChessAsh-1.2.0-android.apk`. This is a release APK signed for sideloading. The script verifies the APK's signer and version metadata. `Build-Android.bat -Debug` builds a separate debug APK.
+Output: `release/ChessAsh-1.2.5-android.apk`. This is a release APK signed for sideloading. The script verifies the APK's signer and version metadata. `Build-Android.bat -Debug` builds a separate debug APK.
 
 The application ID stays `dev.flamedev.chessash`. Keep the existing signing key to install future release builds as updates. A debug APK or an APK signed with another key cannot be updated in place with this release key.
+
+APK signing does not remove every Android installation warning. The exact sideloading, Play Protect or developer-verification message determines the next step; see [SIGNING.md](SIGNING.md).
 
 The local signing identity is `.private/android-release.jks`. Its password is encrypted for the current Windows account in `.private/android-signing-password.dpapi`. Keep both files and back them up securely. The encrypted password is machine/user bound; recover it locally into a password manager before moving the key to another machine. Never commit signing material or paste it into chat. A fresh source checkout creates its own local signing identity when none exists.
 
@@ -43,6 +47,8 @@ The local signing identity is `.private/android-release.jks`. Its password is en
 Set the release version in `package.json`. Increase `androidVersionCode` in `build/release.json` for every Android update. Its value must be an integer greater than the version code already installed.
 
 `build/release.json` also sets the publisher URL, copyright text and documentation list. The installer includes the README, licence, credits, third-party notices and build/platform instructions. `README_GITHUB.md` is the separate public repository README draft.
+
+Version 1.2.5 packages the follow-up UI changes made after v1.2: a pinned main header and desktop board sizing based on available width. The library search and filters scroll normally. Keep release notes matched to their binaries; the changes are listed in [docs/releases/V1.2.5.md](docs/releases/V1.2.5.md).
 
 ## Source and licences
 

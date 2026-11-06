@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "1.2.0"
+  #define AppVersion "1.2.5"
 #endif
 #ifndef AppPublisher
   #define AppPublisher "FlameDev Studios"
@@ -66,6 +66,10 @@ RestartApplications=no
 DisableProgramGroupPage=yes
 SetupMutex=ChessAshInstallerMutex
 UninstallDisplayName=ChessAsh
+#ifdef SignWindows
+SignTool=ChessAsh
+SignedUninstaller=yes
+#endif
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

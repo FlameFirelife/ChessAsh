@@ -3,7 +3,7 @@
   "publisher": "FlameDev Studios",
   "publisherURL": "https://github.com/FlameFirelife",
   "copyright": "Copyright (c) 2026 FlameDev Studios",
-  "androidVersionCode": 4,
+  "androidVersionCode": 5,
   "docs": [
     "README.md",
     "LICENSE",
@@ -11,6 +11,7 @@
     "THIRD_PARTY_NOTICES.md",
     "PLATFORMS.md",
     "BUILDING.md",
+    "SIGNING.md",
     "README_GITHUB.md"
   ]
 }

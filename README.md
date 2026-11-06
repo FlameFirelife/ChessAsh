@@ -16,7 +16,7 @@ Get the Windows installer or Android APK from [Releases](https://github.com/Flam
 - Saves games, reviews and notes locally. Saved reviews work offline.
 - Offers optional Windows tutoring through local Ollama or a compatible API provider. API charges may apply.
 
-The review screen keeps explanations above the board. Move feedback and piece movement animate, with a reduced-motion setting. Detailed notation, the advantage graph and advanced analysis controls are optional.
+The review screen keeps explanations above the board. The main header stays visible while scrolling, and the desktop board uses the available width. Move feedback and piece movement animate, with a reduced-motion setting. Detailed notation, the advantage graph and advanced analysis controls are optional.
 
 ## Foxash in the app
 
@@ -54,7 +54,7 @@ The app's scores and move labels are its own and will differ from Chess.com. Dee
 
 Ollama can run locally. API tutoring sends game context, engine findings and recent chat to the provider you select. There is no silent switch to a cloud model. Model explanations can still be wrong.
 
-Windows uses Electron and Android uses Capacitor. Both render their interface with web technology inside the app. Windows builds are currently unsigned. Android has been checked both in an emulator and a physical device; physical-device testing will still be needed for updates.
+Windows uses Electron and Android uses Capacitor. Both render their interface with web technology inside the app. Windows downloads are unsigned; source builds support a configured trusted signing certificate. Android release APKs are signed. See [SIGNING.md](SIGNING.md) for installation warnings and signing setup.
 
 ## Contributing
 

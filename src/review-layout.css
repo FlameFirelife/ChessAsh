@@ -1,6 +1,14 @@
 .workspace {
   overflow-anchor: none;
 }
+html {
+  scroll-padding-top: calc(var(--app-header-height, 68px) + 12px);
+}
+@media (min-width: 781px) {
+  .review-column {
+    top: calc(var(--app-header-height, 68px) + var(--space-4));
+  }
+}
 .board-column .game-heading {
   block-size: 3rem;
   min-block-size: 3rem;
@@ -133,7 +141,10 @@
 }
 @media (min-width: 781px) {
   .workspace {
-    grid-template-columns: minmax(0, clamp(320px, calc(100svh - 600px), 620px)) minmax(300px, 380px);
+    grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
+  }
+  .board-column {
+    max-width: none;
   }
 }
 @media (max-width: 780px) {

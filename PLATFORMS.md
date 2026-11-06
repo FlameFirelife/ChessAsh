@@ -12,13 +12,15 @@ The bundled Foxash runtime executes only the bundled review script. Custom coach
 
 `node scripts/package-smoke.mjs` launches a hidden isolated development profile and tests the preload bridge, a real Foxash classification change, API allowlisting and credential storage. This is separate from end-to-end interface and installed-package verification.
 
-The installer and portable executable are unsigned. Windows SmartScreen may ask for confirmation. Code signing requires a publisher certificate and is not implied by a successful build.
+Existing v1.2 Windows packages are unsigned. Local builds can use a trusted certificate via `CHESSASH_SIGNING_THUMBPRINT` and `Build-Windows.bat -RequireSigned`; see [SIGNING.md](SIGNING.md). The app, installer and uninstaller are signed when configured. No trusted certificate is installed on the development PC yet, so signed output has not been verified. SmartScreen reputation warnings can persist even with a valid signature.
+
+The desktop layout sizes the board from available width and scrolls vertically in short windows. The main header stays pinned on both platforms; the review panel accounts for its measured height. Library search and filters remain in normal document flow. These changes are included when building version 1.2.5.
 
 ## Android
 
 Prerequisites: Node 22+, JDK 21, Android SDK platform 36, SDK build tools and an Android device or emulator for runtime verification.
 
-The project sets minimum Android API 24. Stockfish also requires a recent Android System WebView with WebAssembly support; an old OS version alone does not establish engine compatibility. Runtime verification in this session used an Android 16/API 36 x86_64 emulator. A physical phone has not been tested.
+The project sets minimum Android API 24. Stockfish also requires a recent Android System WebView with WebAssembly support; an old OS version alone does not establish engine compatibility. Earlier runtime verification used an Android 16/API 36 x86_64 emulator. The author reports that v1.2 works on Android; the agent's v1.2 interface checks used a phone-sized Electron viewport, not a physical device.
 
 The source archive does not include downloaded SDKs or Gradle caches. Install Android Studio/SDK from the official Android Developers site, use SDK Manager to install platform 36 and build tools, set `ANDROID_SDK_ROOT` to that SDK directory and `JAVA_HOME` to JDK 21, then use the commands below. The project also supports a project-local SDK at `work/android-sdk` when supplied. Do not assume the author's local SDK path exists after extracting source elsewhere.
 

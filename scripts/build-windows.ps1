@@ -1,4 +1,4 @@
-param([switch]$SkipWebBuild)
+param([switch]$SkipWebBuild, [switch]$RequireSigned)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
@@ -24,6 +24,10 @@ function Find-InnoCompiler {
     throw 'Inno Setup 6 was not found. Install it from https://jrsoftware.org/isdl.php or set INNO_COMPILER to ISCC.exe.'
 }
 
+$signingScript = Join-Path $PSScriptRoot 'sign-windows.ps1'
+$signingEnabled = -not [string]::IsNullOrWhiteSpace($env:CHESSASH_SIGNING_THUMBPRINT)
+if ($RequireSigned -or $signingEnabled) { & $signingScript -CheckOnly }
+else { Write-Warning 'No Windows signing identity configured. This build will be unsigned. Use -RequireSigned for a public signed build; see SIGNING.md.' }
 $compiler = Find-InnoCompiler
 try {
     Initialize-ChessAshBuild -Platform Windows -SkipWebBuild:$SkipWebBuild
@@ -50,12 +54,19 @@ try {
     & npx.cmd --no-install electron-builder --win --x64 --dir
     if ($LASTEXITCODE) { throw "Windows application build failed ($LASTEXITCODE)." }
     if (-not (Test-Path -LiteralPath 'release\win-unpacked\ChessAsh.exe')) { throw 'The application executable was not produced.' }
+    if ($signingEnabled) { & $signingScript -Path (Join-Path $projectRoot 'release\win-unpacked\ChessAsh.exe') }
     Write-Host 'Compiling the Inno Setup installer...'
     $arguments = @('/Qp', "/DProjectRoot=$projectRoot", "/DAppVersion=$version", "/DAppPublisher=$($settings.publisher)", "/DAppURL=$($settings.publisherURL)", (Join-Path $projectRoot 'installer\ChessAsh.iss'))
+    if ($signingEnabled) {
+        $escapedSigningScript = $signingScript.Replace('$', '$$')
+        $signCommand = 'powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $q' + $escapedSigningScript + '$q -Path $f'
+        $arguments = @('/DSignWindows', "/SChessAsh=$signCommand") + $arguments
+    }
     & $compiler @arguments
     if ($LASTEXITCODE) { throw "Inno Setup compilation failed ($LASTEXITCODE)." }
     $output = Join-Path $projectRoot "release\ChessAsh-Setup-$version.exe"
     if (-not (Test-Path -LiteralPath $output)) { throw 'The installer output is missing.' }
+    if ($signingEnabled) { & $signingScript -Path $output -VerifyOnly }
     Write-Host "Installer ready: $output"
 } finally {
     Exit-ChessAshBuildLock
