@@ -14,8 +14,9 @@ try {
  await page.getByRole('button',{name:'Import PGN',exact:true}).click();
  await page.getByRole('button',{name:/Start review|Analyse game/,exact:true}).click();
  await page.getByText('Review saved',{exact:false}).waitFor({timeout:120000});
- const bridge=await page.evaluate(async()=>({platform:window.chessash.platform,labels:await window.chessash.reviewFacts([{loss:120}]),noNode:typeof window.require==='undefined'}));
+ const bridge=await page.evaluate(async()=>({platform:window.chessash.platform,labels:await window.chessash.reviewFacts([{loss:120}]),training:await window.chessash.trainingDecisions([{bestCapture:false,bestCheck:false,replyDanger:true,loss:150,attempts:0,solved:0,streak:0,passed:true}]),noNode:typeof window.require==='undefined'}));
  assert.equal(bridge.platform,'windows');assert.equal(bridge.labels[0].label,'mistake');assert.equal(bridge.noNode,true);assert.deepEqual(errors,[]);
+ assert.deepEqual(bridge.training,[{focus:'reply',priority:5.5,intervalSeconds:86400}]);
  await fs.mkdir('work/screenshots',{recursive:true});await page.screenshot({path:'work/screenshots/windows-packaged.png'});
  console.log('Packaged Windows UI passed: PGN import, full Stockfish review, actual bundled Foxash, isolated renderer.');
 } finally {await app.close();}
