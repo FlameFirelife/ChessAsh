@@ -1,90 +1,70 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Chess } from "chess.js";
 import type { Square } from "chess.js";
 import type { Label } from "../core";
 import QualityIcon from "./QualityIcon";
+import { initialBoardMotion, nextBoardMotion } from "../core/boardMotion";
+import "../board-motion.css";
 
-type PieceView = { id: number; sq: string; type: string; color: string };
 export default function Board({
   fen,
   flipped,
   onMove,
   arrow,
+  comparison,
   threat,
   highlights = [],
   lastMove,
   quality,
   disabled = false,
+  language = "en",
 }: {
   fen: string;
   flipped: boolean;
   onMove: (from: string, to: string, promotion?: string) => void;
   arrow?: string;
+  comparison?: { fen: string; move: string };
   threat?: string;
   highlights?: string[];
   lastMove?: string;
   quality?: { square: string; label: Label; name: string; key: string };
   disabled?: boolean;
+  language?: "en" | "it";
 }) {
-  const [selected, setSelected] = useState<string | null>(null);
-  const [promotion, setPromotion] = useState<{
-    from: string;
-    to: string;
-  } | null>(null);
-  const [drawn, setDrawn] = useState<string[]>([]);
-  const [start, setStart] = useState<string | null>(null);
+  const [selection, setSelection] = useState<{ fen: string; square: string } | null>(null);
+  const [promotionChoice, setPromotionChoice] = useState<{ fen: string; from: string; to: string } | null>(null);
+  const [drawing, setDrawing] = useState<{ fen: string; arrows: string[]; start: string | null }>({ fen, arrows: [], start: null });
+  const selected = selection?.fen === fen ? selection.square : null;
+  const promotion = promotionChoice?.fen === fen ? promotionChoice : null;
+  const drawn = drawing.fen === fen ? drawing.arrows : [];
+  const start = drawing.fen === fen ? drawing.start : null;
+  const setSelected = (square: string | null) => setSelection(square ? { fen, square } : null);
+  const setPromotion = (choice: { from: string; to: string } | null) => setPromotionChoice(choice ? { fen, ...choice } : null);
   const chess = useMemo(() => new Chess(fen), [fen]);
-  useEffect(() => {
-    setSelected(null);
-    setPromotion(null);
-    setDrawn([]);
-    setStart(null);
-  }, [fen]);
-  const pieceState = useRef<{
-    fen: string;
-    views: PieceView[];
-    captured: PieceView[];
-    next: number;
-  }>({ fen: "", views: [], captured: [], next: 0 });
-  if (pieceState.current.fen !== fen) {
-    const previous = [...pieceState.current.views],
-      next: PieceView[] = [];
-    const squares = chess
-      .board()
-      .flat()
-      .filter((p) => p !== null);
-    const used = new Set<number>();
-    for (const p of squares) {
-      const existing = previous.find(
-        (v) => v.sq === p.square && v.type === p.type && v.color === p.color,
-      );
-      if (existing) {
-        next.push(existing);
-        used.add(existing.id);
-      }
-    }
-    for (const p of squares) {
-      if (next.some((v) => v.sq === p.square)) continue;
-      const candidate = previous
-        .filter(
-          (v) => !used.has(v.id) && v.type === p.type && v.color === p.color,
-        )
-        .sort((a, b) => {
-          const dist = (s: string) =>
-            Math.abs(s.charCodeAt(0) - p.square.charCodeAt(0)) +
-            Math.abs(Number(s[1]) - Number(p.square[1]));
-          return dist(a.sq) - dist(b.sq);
-        })[0];
-      const id = candidate?.id ?? pieceState.current.next++;
-      used.add(id);
-      next.push({ id, sq: p.square, type: p.type, color: p.color });
-    }
-    const captured =
-      previous.length - next.length <= 1
-        ? previous.filter((v) => !used.has(v.id))
-        : [];
-    pieceState.current = { ...pieceState.current, fen, views: next, captured };
+  const alternative = useMemo(() => {
+    if (!comparison || !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(comparison.move)) return null;
+    try {
+      const previous = new Chess(comparison.fen);
+      const piece = previous.get(comparison.move.slice(0, 2) as Square);
+      const move = previous.move({ from: comparison.move.slice(0, 2), to: comparison.move.slice(2, 4), promotion: comparison.move[4] });
+      return piece ? { move: move.lan, piece, from: move.from } : null;
+    } catch { return null; }
+  }, [comparison?.fen, comparison?.move]);
+  const suggestion = alternative?.move || arrow;
+  const [motion, setMotion] = useState(() => initialBoardMotion(fen));
+  let pieces = motion;
+  if (motion.fen !== fen) {
+    pieces = nextBoardMotion(motion, fen);
+    setMotion(pieces);
+    if (selection) setSelection(null);
+    if (promotionChoice) setPromotionChoice(null);
+    if (drawing.fen !== fen) setDrawing({ fen, arrows: [], start: null });
   }
+  useEffect(() => {
+    const timer = setTimeout(() => setMotion(current => current.fen === fen && (current.captured.length || current.moving.length) ? { ...current, captured: [], moving: [] } : current), 440);
+    return () => clearTimeout(timer);
+  }, [fen]);
+  const names = language === "it" ? { p: "pedone", n: "cavallo", b: "alfiere", r: "torre", q: "donna", k: "re" } : { p: "pawn", n: "knight", b: "bishop", r: "rook", q: "queen", k: "king" };
   const files = flipped ? "hgfedcba" : "abcdefgh";
   const ranks = flipped ? "12345678" : "87654321";
   const legal = selected
@@ -101,7 +81,7 @@ export default function Board({
     }
     const piece = chess.get(sq as Square);
     setSelected(piece?.color === chess.turn() ? sq : null);
-    setDrawn([]);
+    setDrawing({ fen, arrows: [], start: null });
   }
   const xy = (sq: string) => ({
     x: files.indexOf(sq[0]) * 100 + 50,
@@ -112,7 +92,7 @@ export default function Board({
       <div
         className="chessboard"
         role="group"
-        aria-label="Chessboard. Select a piece then a destination; right-drag to draw arrows."
+        aria-label={language === "it" ? "Scacchiera. Seleziona un pezzo e poi una destinazione; trascina con il tasto destro per disegnare frecce." : "Chessboard. Select a piece then a destination; right-drag to draw arrows."}
         onContextMenu={(e) => e.preventDefault()}
       >
         {Array.from(ranks).flatMap((rank, r) =>
@@ -122,9 +102,9 @@ export default function Board({
             const light = (file.charCodeAt(0) - 97 + Number(rank)) % 2 === 0;
             return (
               <button
-                key={sq + (quality?.square === sq ? quality.key : "")}
-                className={`square ${light ? "light" : "dark"} ${selected === sq ? "selected" : ""} ${highlights.includes(sq) ? "review-focus" : ""} ${threat?.slice(2, 4) === sq ? "threat-target" : ""} ${lastMove && (lastMove.slice(0, 2) === sq || lastMove.slice(2, 4) === sq) ? "last" : ""} ${quality?.square === sq ? "quality-square quality-" + quality.label : ""}`}
-                aria-label={`${sq}${p ? " " + (p.color === "w" ? "White" : "Black") + " " + { p: "pawn", n: "knight", b: "bishop", r: "rook", q: "queen", k: "king" }[p.type] : ""}`}
+                key={sq}
+                className={`square ${light ? "light" : "dark"} ${selected === sq ? "selected" : ""} ${highlights.includes(sq) ? "review-focus" : ""} ${alternative && (alternative.move.slice(0, 2) === sq || alternative.move.slice(2, 4) === sq) ? "comparison-square" : ""} ${threat?.slice(2, 4) === sq ? "threat-target" : ""} ${lastMove && (lastMove.slice(0, 2) === sq || lastMove.slice(2, 4) === sq) ? "last" : ""} ${quality?.square === sq ? "quality-square quality-" + quality.label : ""}`}
+                aria-label={`${sq}${p ? " " + (language === "it" ? (p.color === "w" ? "Bianco" : "Nero") : (p.color === "w" ? "White" : "Black")) + " " + names[p.type] : ""}`}
                 onClick={() => choose(sq)}
                 draggable={!!p && !disabled}
                 onDragStart={(e) => {
@@ -144,7 +124,9 @@ export default function Board({
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault();
+                  if (disabled) return;
                   const from = e.dataTransfer.getData("text/plain");
+                  if (!/^[a-h][1-8]$/.test(from)) return;
                   if (
                     chess
                       .moves({ square: from as Square, verbose: true })
@@ -160,12 +142,11 @@ export default function Board({
                   }
                 }}
                 onPointerDown={(e) => {
-                  if (e.button === 2) setStart(sq);
+                  if (e.button === 2) setDrawing({ fen, arrows: drawn, start: sq });
                 }}
                 onPointerUp={(e) => {
                   if (e.button === 2 && start && start !== sq) {
-                    setDrawn((d) => [...d, start + sq]);
-                    setStart(null);
+                    setDrawing({ fen, arrows: [...drawn, start + sq], start: null });
                   }
                 }}
               >
@@ -178,8 +159,13 @@ export default function Board({
             );
           }),
         )}
+        {alternative && (
+          <div className="comparison-source-layer" role="img" aria-label={language === "it" ? `Origine dell’alternativa nella posizione precedente: ${alternative.from}` : `Alternative origin in the previous position: ${alternative.from}`}>
+            <span className="comparison-source" data-comparison-square={alternative.from} style={{ left: `${(files.indexOf(alternative.from[0]) + .5) * 12.5}%`, top: `${(ranks.indexOf(alternative.from[1]) + .5) * 12.5}%` }} />
+          </div>
+        )}
         <div className="piece-layer" aria-hidden="true">
-          {pieceState.current.captured.map((p) => (
+          {pieces.captured.map((p) => (
             <img
               draggable="false"
               className="moving-piece captured-piece"
@@ -196,10 +182,11 @@ export default function Board({
               }}
             />
           ))}
-          {pieceState.current.views.map((p) => (
+          {pieces.views.map((p) => (
             <img
               draggable="false"
-              className="moving-piece"
+              className={`moving-piece ${pieces.moving.includes(p.id) ? "piece-in-motion" : ""}`}
+              data-piece-id={p.id}
               data-square={p.sq}
               key={p.id}
               src={
@@ -217,10 +204,10 @@ export default function Board({
         </div>
         {quality && (
           <div
-            key={quality.key}
+            key={fen + ":" + quality.square}
             className={`board-quality quality-${quality.label}`}
             role="img"
-            aria-label={`${quality.name} on ${quality.square}`}
+            aria-label={`${quality.name} ${language === "it" ? "in" : "on"} ${quality.square}`}
             style={{
               left: `${(files.indexOf(quality.square[0]) + 1) * 12.5}%`,
               top: `${ranks.indexOf(quality.square[1]) * 12.5}%`,
@@ -256,13 +243,14 @@ export default function Board({
             </marker>
           </defs>
           {threat && <line data-threat={threat} x1={xy(threat.slice(0, 2)).x} y1={xy(threat.slice(0, 2)).y} x2={xy(threat.slice(2, 4)).x} y2={xy(threat.slice(2, 4)).y} markerEnd="url(#threat-head)" />}
-          {[...drawn, ...(arrow ? [arrow] : [])].map((a, i) => {
+          {[...drawn, ...(suggestion ? [suggestion] : [])].map((a, i) => {
             const f = xy(a.slice(0, 2)),
               t = xy(a.slice(2, 4));
             return (
               <line
-                key={i}
+                key={i >= drawn.length ? "suggestion" : "drawn-" + a}
                 data-suggestion={i >= drawn.length ? a : undefined}
+                data-comparison={i >= drawn.length && alternative ? a : undefined}
                 x1={f.x}
                 y1={f.y}
                 x2={t.x}
@@ -274,8 +262,8 @@ export default function Board({
         </svg>
       </div>
       {promotion && (
-        <div className="promotion" role="dialog" aria-label="Choose promotion">
-          <strong>Promote to</strong>
+        <div className="promotion" role="dialog" aria-label={language === "it" ? "Scegli la promozione" : "Choose promotion"}>
+          <strong>{language === "it" ? "Promuovi a" : "Promote to"}</strong>
           {["q", "r", "b", "n"].map((p) => (
             <button
               key={p}
@@ -286,7 +274,7 @@ export default function Board({
             >
               {
                 (
-                  { q: "Queen", r: "Rook", b: "Bishop", n: "Knight" } as Record<
+                  (language === "it" ? { q: "Donna", r: "Torre", b: "Alfiere", n: "Cavallo" } : { q: "Queen", r: "Rook", b: "Bishop", n: "Knight" }) as Record<
                     string,
                     string
                   >
@@ -294,7 +282,7 @@ export default function Board({
               }
             </button>
           ))}
-          <button onClick={() => setPromotion(null)}>Cancel</button>
+          <button onClick={() => setPromotion(null)}>{language === "it" ? "Annulla" : "Cancel"}</button>
         </div>
       )}
     </div>

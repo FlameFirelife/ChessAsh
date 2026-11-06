@@ -1,0 +1,33 @@
+.board-shell .moving-piece {
+  transition: transform 360ms cubic-bezier(.18, .76, .22, 1), opacity 180ms ease;
+  backface-visibility: hidden;
+  transform-origin: center;
+}
+.board-shell .piece-in-motion { z-index: 2; }
+.board-shell .captured-piece {
+  z-index: 0;
+  animation: board-capture-away 220ms ease-out both;
+}
+.board-shell .board-quality {
+  transition: left 280ms ease, top 280ms ease, background-color 180ms ease;
+  animation: board-feedback-in 240ms cubic-bezier(.2, .8, .25, 1) both;
+}
+.board-shell .quality-square { animation: none; background-image: linear-gradient(var(--feedback), var(--feedback)); background-blend-mode: soft-light; }
+.board-shell .arrows line {
+  transition: x1 280ms ease, x2 280ms ease, y1 280ms ease, y2 280ms ease;
+}
+.board-shell .arrows line[data-suggestion] { animation: none; }
+.board-shell .comparison-source-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.board-shell .comparison-source { position: absolute; width: 3.6%; aspect-ratio: 1; border: 2px solid #247da5; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+.board-shell .square.comparison-square { box-shadow: inset 0 0 0 1px rgb(36 125 165 / 65%); }
+.board-shell .arrows line[data-comparison] { stroke-width: 9; stroke: #2582ad; opacity: .78; }
+@keyframes board-capture-away { from { opacity: .8; } to { opacity: 0; } }
+@keyframes board-feedback-in { from { opacity: 0; scale: .82; } to { opacity: 1; scale: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .board-shell .moving-piece, .board-shell .board-quality, .board-shell .arrows line { transition: none; animation: none; }
+  .board-shell .captured-piece { display: none; }
+}
+html[data-motion="reduced"] .board-shell .moving-piece,
+html[data-motion="reduced"] .board-shell .board-quality,
+html[data-motion="reduced"] .board-shell .arrows line { transition: none; animation: none; }
+html[data-motion="reduced"] .board-shell .captured-piece { display: none; }

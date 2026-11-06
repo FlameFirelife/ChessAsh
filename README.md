@@ -10,7 +10,8 @@ Get the Windows installer or Android APK from [Releases](https://github.com/Flam
 
 - Reviews games with move labels, accuracy scores, explanations and playable engine lines.
 - Shows the best move with arrows and highlights, with piece-and-square explanations linked to the board.
-- Lets you retry positions and compare strong alternatives.
+- Lets you retry positions and reviews moves you try without changing the saved game.
+- Supports English and Italian, with explanations from your side of the game.
 - Keeps your main account's latest games synced while the app is active, with separate library collections for other imported players.
 - Saves games, reviews and notes locally. Saved reviews work offline.
 - Offers optional Windows tutoring through local Ollama or a compatible API provider. API charges may apply.

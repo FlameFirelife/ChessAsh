@@ -1,0 +1,144 @@
+.workspace {
+  overflow-anchor: none;
+}
+.board-column .game-heading {
+  block-size: 3rem;
+  min-block-size: 3rem;
+}
+.game-heading > div {
+  min-width: 0;
+}
+.game-heading h1,
+.game-heading .section-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.review-perspective {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  block-size: 2.5rem;
+  font-size: .75rem;
+  color: var(--secondary);
+  margin-bottom: .5rem;
+}
+.review-perspective select {
+  max-width: 70%;
+  min-height: 30px;
+  padding-block: 4px;
+  font-size: .75rem;
+}
+.review-message-slot {
+  block-size: 15rem;
+  min-block-size: 15rem;
+  contain: layout;
+}
+.review-message-slot .board-message {
+  block-size: 100%;
+  margin: 0;
+  padding-block: 2px;
+}
+.review-message-slot .speech-bubble {
+  min-height: 0;
+  max-block-size: 100%;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  animation: none;
+}
+.review-message-slot .super-king-avatar {
+  animation: none;
+}
+.speech-bubble .best-move-description {
+  font-size: .8125rem;
+  line-height: 1.5;
+  margin-block: .5rem;
+}
+.coach-expansion {
+  color: inherit;
+  font-size: .8125rem;
+  line-height: 1.6;
+  margin-top: .5rem;
+}
+.speech-bubble .coach-expansion summary {
+  color: var(--coach-ink);
+  cursor: pointer;
+  min-height: 30px;
+  font-weight: 600;
+}
+.speech-bubble .coach-expansion p {
+  color: var(--coach-ink);
+  margin: .5rem 0;
+}
+.review-controls-slot {
+  block-size: 4rem;
+  min-block-size: 4rem;
+  padding-top: .5rem;
+}
+.review-controls-slot .review-position-controls {
+  margin: 0;
+  gap: 6px;
+}
+.review-controls-slot .review-position-controls > button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 36px;
+  padding: 5px 6px;
+  line-height: 1.3;
+}
+.review-controls-slot .review-position-controls > span {
+  font-size: .6875rem;
+  line-height: 1.4;
+}
+.temporary-review-label {
+  font-size: .6875rem;
+  color: var(--cool);
+}
+.temporary-review-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+}
+.temporary-review-tools button {
+  min-height: 28px;
+  padding: 4px 6px;
+  font-size: .6875rem;
+}
+.workspace-context {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1rem;
+  color: var(--secondary);
+}
+.workspace-context p {
+  font-size: .875rem;
+  line-height: 1.6;
+}
+.board-column .player-strip {
+  height: 34px;
+  min-height: 34px;
+  overflow: hidden;
+}
+.player-strip strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (min-width: 781px) {
+  .workspace {
+    grid-template-columns: minmax(0, clamp(320px, calc(100svh - 600px), 620px)) minmax(300px, 380px);
+  }
+}
+@media (max-width: 780px) {
+  .review-message-slot {
+    block-size: 16rem;
+    min-block-size: 16rem;
+  }
+}

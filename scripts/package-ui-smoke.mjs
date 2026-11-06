@@ -4,11 +4,11 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 const root=process.cwd();
 const executable=process.env.CHESSASH_EXECUTABLE || path.join(root,'release/win-unpacked/ChessAsh.exe');
-const profile=path.join(root,'work/packaged-ui-profile');
+const profile=path.join(root,'work/packaged-ui-profile-'+Date.now());
 await fs.mkdir(profile,{recursive:true});
 const app=await electron.launch({executablePath:executable,args:[],env:{...process.env,CHESSASH_TEST:'1',CHESSASH_TEST_DATA:profile}});
 try {
- const page=await app.firstWindow();const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ const page=await app.firstWindow();await page.evaluate(()=>localStorage.setItem('chessash:language','en'));await page.reload();const errors=[];page.on('pageerror',error=>errors.push(error.message));
  await page.getByRole('button',{name:'Import game',exact:true}).click();
  await page.getByRole('textbox',{name:'Paste PGN'}).fill('[Event "Packaged review"]\n[White "Local"]\n[Black "Foxash"]\n[Result "0-1"]\n\n1. f3 e5 2. g4 Qh4# 0-1');
  await page.getByRole('button',{name:'Import PGN',exact:true}).click();

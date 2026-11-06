@@ -28,6 +28,7 @@ export interface Review {
   createdAt?: number;
 }
 export interface Game {
+  reviewAs?: 'w' | 'b' | 'neutral';
   id: string;
   pgn: string;
   headers: Record<string, string>;

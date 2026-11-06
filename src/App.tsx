@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useLanguage } from "./i18n";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Chess } from "chess.js";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import FoxashPanel from "./desktop/FoxashPanel";
@@ -26,6 +27,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { reviewCoaching } from "./core/coaching";
+import { playerColorFor } from "./core/perspective";
+import { reviewVariationMove } from "./core/variationReview";
 import { version as appVersion } from "../package.json";
 import Board from "./components/Board";
 import Graph from "./components/Graph";
@@ -99,13 +102,13 @@ function prefLoad(): Prefs {
     return defaults;
   }
 }
-const cp = (n: number) =>
+const cp = (n: number, t: (key: string) => string) =>
   Math.abs(n) >= 29000
-    ? (n > 0 ? "White" : "Black") + " mating"
+    ? (n > 0 ? t("White") : t("Black")) + " " + t("mating")
     : (n > 0 ? "+" : "") + (n / 100).toFixed(2);
 const err = (e: unknown) => (e instanceof Error ? e.message : String(e));
-const badge = (r: MoveReview) => (
-  <span className={`badge label-${r.label}`} title={LABEL_INFO[r.label].name}>
+const badge = (r: MoveReview, t: (key: string) => string) => (
+  <span className={`badge label-${r.label}`} title={t(LABEL_INFO[r.label].name)}>
     {LABEL_INFO[r.label].symbol}
   </span>
 );
@@ -131,6 +134,7 @@ async function download(name: string, text: string) {
 }
 
 export default function App() {
+  const { language, setLanguage, t } = useLanguage();
   const [games, setGames] = useState<Game[]>([]),
     [ready, setReady] = useState(false),
     [activeId, setActiveId] = useState(
@@ -152,7 +156,6 @@ export default function App() {
     [timeFilter, setTimeFilter] = useState("all");
   const [short, setShort] = useState(true),
     [focusedSquare, setFocusedSquare] = useState<string | null>(null),
-    [playedView, setPlayedView] = useState(false),
     [retry, setRetry] = useState(false),
     [retryText, setRetryText] = useState("");
   const [branch, setBranch] = useState<string[]>([]),
@@ -160,6 +163,10 @@ export default function App() {
     [branchOrigin, setBranchOrigin] = useState(""),
     [engineResult, setEngineResult] = useState<EngineResult | null>(null),
     [searching, setSearching] = useState(false);
+  const [variationState, setVariationState] = useState<{ key: string; review?: { game: Game; result: MoveReview }; error?: string }>({ key: '' });
+  const [variationAttempt, setVariationAttempt] = useState(0);
+  const [practice, setPractice] = useState<{ game: Game; result: MoveReview } | null>(null);
+  const variationCache = useRef(new Map<string, { game: Game; result: MoveReview }>());
   const [username, setUsername] = useState(
       localStorage.getItem("chessash:username") || "",
     ),
@@ -184,12 +191,11 @@ export default function App() {
   const game = games.find((g) => g.id === activeId) || games[0];
   const results = game?.review?.results || [];
   const current = results.find((r) => r.ply === ply);
-  const coaching = game && current ? reviewCoaching(game, current) : undefined;
-  const reviewing = view === "review" && !!current && !branch.length;
+  const playerColor = game ? playerColorFor(game, accounts.mainUsername) : undefined;
   const initialFen = game?.positions[ply] || new Chess().fen();
   const effectiveFen =
-    (retry || (reviewing && !playedView)) && current
-      ? game!.positions[current.ply - 1]
+    retry && (practice?.result || current)
+      ? (practice?.game || game!).positions[(practice?.result || current!).ply - 1]
       : branch.length && branchOrigin
         ? (() => {
             const c = new Chess(branchOrigin);
@@ -207,6 +213,43 @@ export default function App() {
             return c.fen();
           })()
         : initialFen;
+  const variationPosition = useMemo(() => {
+    if (!branch.length || !branchOrigin || !branchIndex) return undefined;
+    const board = new Chess(branchOrigin);
+    for (const uci of branch.slice(0, branchIndex - 1)) board.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
+    return { fen: board.fen(), move: branch[branchIndex - 1] };
+  }, [branch, branchOrigin, branchIndex]);
+  const variationKey = variationPosition ? JSON.stringify([game?.id, variationPosition.fen, variationPosition.move, prefs.depth]) : '';
+  const variationReview = variationState.key === variationKey ? variationState.review : undefined;
+  const coachGame = retry && practice ? practice.game : branch.length ? variationReview?.game : game;
+  const coachResult = retry && practice ? practice.result : branch.length ? variationReview?.result : current;
+  const coaching = useMemo(() => coachGame && coachResult ? reviewCoaching(coachGame, coachResult, { playerColor, language }) : undefined, [coachGame, coachResult, playerColor, language]);
+  const reviewing = view === "review" && !!coachResult && !retry;
+  const focusedThreat = !!coaching?.threat && !!focusedSquare && [coaching.threat.slice(0, 2), coaching.threat.slice(2, 4)].includes(focusedSquare);
+  useEffect(() => {
+    if (!variationPosition || !variationKey) return;
+    const cached = variationCache.current.get(variationKey);
+    if (cached) { setVariationState({ key: variationKey, review: cached }); return; }
+    const controller = new AbortController();
+    setVariationState({ key: variationKey });
+    void reviewVariationMove(variationPosition.fen, variationPosition.move, {
+      depth: prefs.depth,
+      signal: controller.signal,
+      classify: isDesktop ? async facts => {
+        const row = (await window.chessash!.reviewFacts([facts]))[0];
+        if (!row || !LABELS.includes(row.label)) throw new Error('Foxash returned an invalid review label.');
+        return row;
+      } : undefined,
+    }).then(review => {
+      if (controller.signal.aborted) return;
+      if (variationCache.current.size >= 64) variationCache.current.delete(variationCache.current.keys().next().value!);
+      variationCache.current.set(variationKey, review);
+      setVariationState({ key: variationKey, review });
+    }).catch(error => {
+      if (!controller.signal.aborted) setVariationState({ key: variationKey, error: err(error) });
+    });
+    return () => controller.abort();
+  }, [variationKey, isDesktop, variationAttempt]);
   useEffect(() => {
     if (!ready || !game) return;
     const next = Math.max(0, Math.min(ply, game.moves.length));
@@ -297,10 +340,9 @@ export default function App() {
       : "normal";
     document.documentElement.style.fontSize = prefs.font + "px";
   }, [prefs]);
-  useEffect(() => {
-    setPlayedView(false);
+  useLayoutEffect(() => {
     setFocusedSquare(null);
-
+    setPractice(null);
     setRetry(false);
     setRetryText("");
     setBranch([]);
@@ -500,8 +542,8 @@ export default function App() {
       }
       setNotice(
         review.completed
-          ? "Review complete. Select a key moment to begin."
-          : "Analysis paused. Your progress is saved.",
+          ? t("Review complete. Select a key moment to begin.")
+          : t("Analysis paused. Your progress is saved."),
       );
     } catch (e) {
       if (!controller.signal.aborted) setError(err(e));
@@ -536,14 +578,16 @@ export default function App() {
   async function move(from: string, to: string, promotion?: string) {
     if (!game) return;
     const uci = from + to + (promotion || "");
-    if (retry && current) {
-      if (uci === current.best) {
+    const retryResult = practice?.result || current;
+    const retryGame = practice?.game || game;
+    if (retry && retryResult) {
+      if (uci === retryResult.best) {
         setRetryText(
           "Found it. Play through the continuation to see the idea.",
         );
         setRetry(false);
     
-        preview([current.best], game.positions[current.ply - 1]);
+        preview([retryResult.best], retryGame.positions[retryResult.ply - 1]);
         setBranchIndex(1);
         sound();
         return;
@@ -554,7 +598,7 @@ export default function App() {
       }
       setRetryText("Checking your alternative…");
       try {
-        const base = game.positions[current.ply - 1];
+        const base = retryGame.positions[retryResult.ply - 1];
         const [best, alternative] = await Promise.all([
           analyzePosition(base, { depth: prefs.depth }),
           analyzePosition(base, { depth: prefs.depth, moves: [uci] }),
@@ -566,7 +610,7 @@ export default function App() {
             "That works too. Your move preserves the position’s chances.",
           );
           setRetry(false);
-          preview([uci], game.positions[current.ply - 1]);
+          preview([uci], retryGame.positions[retryResult.ply - 1]);
           setBranchIndex(1);
           sound();
         } else {
@@ -587,7 +631,6 @@ export default function App() {
       setBranchOrigin(origin);
       setBranch(next);
       setBranchIndex(next.length);
-      setView("analysis");
       setEngineResult(null);
       sound();
     } catch {}
@@ -601,7 +644,6 @@ export default function App() {
     setBranchOrigin(origin);
     setBranch(moves);
     setBranchIndex(0);
-    setView("analysis");
   }
   function jumpKey(direction: number) {
     const keys = (
@@ -629,10 +671,10 @@ export default function App() {
         .slice(0, 3)
         .sort((a, b) => a.ply - b.ply)
     : results.filter((r) => r.key);
-  const activeScore = engineResult?.score ?? (reviewing && !playedView ? current?.before : current?.after) ?? 0;
+  const activeScore = (engineResult?.fen === effectiveFen ? engineResult.score : undefined) ?? (retry ? coachResult?.before : coachResult?.after) ?? 0;
   const lastMove = branchIndex ? branch[branchIndex - 1] : current?.move;
-  const pawnName = game?.headers.White || "White",
-    blackName = game?.headers.Black || "Black";
+  const pawnName = game?.headers.White || t("White"),
+    blackName = game?.headers.Black || t("Black");
 
   return (
     <>
@@ -640,7 +682,7 @@ export default function App() {
         <button
           className="brand"
           onClick={() => setScreen("board")}
-          aria-label="ChessAsh board"
+          aria-label={t("ChessAsh board")}
         >
           <span className="brand-mark">
             <Flame size={23} />
@@ -648,14 +690,13 @@ export default function App() {
           Chess<span>Ash</span>
           <small>{appVersion.replace(/\.0$/, "")}</small>
         </button>
-        <nav aria-label="Main navigation">
+        <nav aria-label={t("Main navigation")}>
           <button
             className={screen === "board" ? "nav-active" : ""}
             onClick={() => setScreen("board")}
           >
             <BookOpen size={17} />
-            Review
-          </button>
+            {t("Review")}</button>
           <button
             className={screen === "library" ? "nav-active" : ""}
             onClick={() => {
@@ -664,14 +705,14 @@ export default function App() {
             }}
           >
             <Library size={17} />
-            Library <span className="count">{games.length}</span>
+            {t("Library")}<span className="count">{games.length}</span>
           </button>
         </nav>
         <div className="header-actions">
           <button
             className="icon-button"
-            title="Settings"
-            aria-label="Settings"
+            title={t("Settings")}
+            aria-label={t("Settings")}
             onClick={() => setDialog("settings")}
           >
             <Settings size={19} />
@@ -684,47 +725,45 @@ export default function App() {
             }}
           >
             <Plus size={17} />
-            Import game
-          </button>
+            {t("Import game")}</button>
         </div>
       </header>
       {error && (
         <div className="error-banner" role="alert">
-          <span>{error}</span>
-          <button aria-label="Dismiss error" onClick={() => setError("")}>
+          <span>{t(error)}</span>
+          <button aria-label={t("Dismiss error")} onClick={() => setError("")}>
             <X size={16} />
           </button>
         </div>
       )}
       {notice && (
         <div className="toast" role="status">
-          {notice}
+          {t(notice)}
         </div>
       )}
       {!ready ? (
         <main className="empty-state">
           <Flame size={40} />
-          <h1>Opening your library…</h1>
+          <h1>{t("Opening your library…")}</h1>
         </main>
       ) : !game && screen === "board" ? (
         <main className="welcome">
           <div className="welcome-copy">
-            <span className="section-label">A closer look at your chess</span>
-            <h1>Review your games.</h1>
-            <p>Import from Chess.com or open a PGN.</p>
+            <span className="section-label">{t("A closer look at your chess")}</span>
+            <h1>{t("Review your games.")}</h1>
+            <p>{t("Import from Chess.com or open a PGN.")}</p>
             <div className="actions">
               <button className="primary" onClick={() => openImport()}>
                 <Plus size={18} />
-                Import your games
-              </button>
+                {t("Import your games")}</button>
               <button onClick={() => addGames([parsePgn(DEMO, "Sample")])}>
-                Explore a sample
-              </button>
+                {t("Explore a sample")}</button>
             </div>
-            <p className="quiet">Free reviews, saved on your device.</p>
+            <p className="quiet">{t("Free reviews, saved on your device.")}</p>
           </div>
           <div className="welcome-board">
             <Board
+                  language={language}
               fen={new Chess().fen()}
               flipped={false}
               onMove={() => {}}
@@ -752,18 +791,16 @@ export default function App() {
           />
           {deleted && (
             <div className="undo-bar">
-              Game removed.
-              <button
+              {t("Game removed.")}<button
                 onClick={() => {
                   setGames((gs) => mergeGames(gs, [deleted]));
                   setDeleted(null);
                 }}
               >
                 <Undo2 size={15} />
-                Undo
-              </button>
+                {t("Undo")}</button>
               <button
-                aria-label="Dismiss undo"
+                aria-label={t("Dismiss undo")}
                 onClick={() => setDeleted(null)}
               >
                 <X size={15} />
@@ -778,14 +815,14 @@ export default function App() {
               <div className="game-heading">
                 <div>
                   <span className="section-label">
-                    {openingName(game.moves)}
+                    {t(openingName(game.moves))}
                   </span>
                   <h1>{game.headers.Event || "Game review"}</h1>
                 </div>
                 <button
                   className="icon-button"
-                  title="Export annotated PGN"
-                  aria-label="Export annotated PGN"
+                  title={t("Export annotated PGN")}
+                  aria-label={t("Export annotated PGN")}
                   onClick={() => {
                     void download(`ChessAsh-${game.id}.pgn`, exportPgn(game))
                       .then((saved) => {
@@ -797,52 +834,71 @@ export default function App() {
                   <ArrowDownToLine size={19} />
                 </button>
               </div>
-              {view === "review" && (
+              <label className="review-perspective">{t("Review as")}
+                <select aria-label={t("Review perspective")} value={game.reviewAs || "auto"} onChange={(e) => updateGame(game.id, { reviewAs: e.target.value === "auto" ? undefined : e.target.value as 'w' | 'b' | 'neutral' })}>
+                  <option value="auto">{t("My account")}</option>
+                  <option value="w">{t("White")}</option>
+                  <option value="b">{t("Black")}</option>
+                  <option value="neutral">{t("White / Black")}</option>
+                </select>
+              </label>
+              <div className="review-message-slot">
+              {view === "review" ? (
                 <ReviewMessage
+                  language={language}
+                  moveNumber={coachGame && coachResult ? Number(coachGame.positions[coachResult.ply - 1].split(' ')[5]) : undefined}
                   onSquare={setFocusedSquare}
-                  result={current}
+                  result={coachResult}
                   text={
-                    current
+                    coachResult
                       ? coaching!.text
+                      : branch.length
+                        ? variationState.key === variationKey && variationState.error
+                          ? t("Move review unavailable. Try again.")
+                          : branchIndex ? t("Reviewing your move…") : t("Try a move on the board.")
                       : results.length
-                        ? "Your review is ready. Let’s look at a turning point."
-                        : "Let’s look at this game together. Start a review to find the moments worth practising."
+                        ? t("Your review is ready. Let’s look at a turning point.")
+                        : t("Let’s look at this game together. Start a review to find the moments worth practising.")
                   }
                   detail={coaching?.best}
-                  retryText={retryText}
+                  expandedDetail={coaching?.detail}
+                  retryText={t(retryText)}
                   retry={retry}
                   busy={busy}
-                  hasReview={results.length > 0}
+                  hasReview={!branch.length && results.length > 0}
                   onTry={() => {
+                    if (!coachGame || !coachResult) return;
+                    setPractice({ game: coachGame, result: coachResult });
                     setBranch([]);
                     setRetry(true);
                     setRetryText("Find a strong move on the board.");
                 
                   }}
                   onLine={() => {
-                    if (!current) return;
+                    if (!coachResult || !coachGame) return;
                 
                     setRetry(false);
-                    preview(current.pv);
+                    preview(coachResult.pv, coachGame.positions[coachResult.ply - 1]);
                   }}
                   onExit={() => {
                     setRetry(false);
                     setRetryText("");
-                    setPlayedView(false);
+                    setPractice(null);
                   }}
                   onStart={() => {
                     setBranch([]);
                     setPly(keyResults[0]?.ply || 1);
                   }}
                 />
-              )}
-              {reviewing && !retry && (
-                <div className="review-position-controls" aria-label="Review position">
-                  <button aria-pressed={!playedView} onClick={() => setPlayedView(false)}>Best move · before</button>
-                  <button aria-pressed={playedView} onClick={() => setPlayedView(true)}>Played move · after</button>
-                  <span>{playedView ? "After your move · red arrow shows a checked capture or check" : "Before your move · blue arrow shows the best move"}</span>
+              ) : <div className="workspace-context"><strong>{view === "analysis" ? t("Explore the position") : t("Tutor")}</strong><p>{t("Your game stays here. Return to Review whenever you want.")}</p></div>}
+              </div>
+              <div className="review-controls-slot">
+                <div className="review-position-controls" aria-label={t("Review position")}>
+                  {branch.length > 0 && <div className="temporary-review-tools"><strong className="temporary-review-label">{t("Temporary move review")}</strong><button onClick={() => { setBranch([]); setEngineResult(null); }}>{t("Return to game")}</button></div>}
+                  {branch.length > 0 && variationState.key === variationKey && variationState.error && <button onClick={() => setVariationAttempt(n => n + 1)}>{t("Try again")}</button>}
+                  <span>{retry ? t("Try a move on the board.") : reviewing ? t("Blue: best alternative. Focus a square in the explanation to see the reply.") : branch.length ? t("This move is outside the saved game.") : t("Select a reviewed move to see the feedback.")}</span>
                 </div>
-              )}
+              </div>
               <div className="player-strip">
                 <div className="player-avatar">{flipped ? "W" : "B"}</div>
                 <strong>{flipped ? pawnName : blackName}</strong>
@@ -854,7 +910,7 @@ export default function App() {
               <div className="board-with-eval">
                 <div
                   className="eval-bar"
-                  aria-label={`Evaluation ${cp(activeScore)}`}
+                  aria-label={t(`Evaluation ${cp(activeScore, t)}`)}
                 >
                   <div
                     className="eval-white"
@@ -869,21 +925,22 @@ export default function App() {
                   </span>
                 </div>
                 <Board
+                  language={language}
                   key={activeId}
                   fen={effectiveFen}
                   flipped={flipped}
                   onMove={(f, t, p) => void move(f, t, p)}
-                  arrow={prefs.arrows && reviewing && !retry && !playedView ? current?.best : undefined}
-                  threat={prefs.arrows && reviewing && !retry && playedView ? coaching?.threat : undefined}
-                  highlights={[...(focusedSquare ? [focusedSquare] : []), ...(reviewing && !retry ? playedView ? coaching?.targets || [] : current?.best ? [current.best.slice(0, 2), current.best.slice(2, 4)] : [] : [])]}
-                  lastMove={reviewing && !playedView ? undefined : lastMove}
+                  comparison={prefs.arrows && reviewing && !focusedThreat && coachResult && coachGame ? { fen: coachGame.positions[coachResult.ply - 1], move: coachResult.best } : undefined}
+                  threat={prefs.arrows && reviewing && focusedThreat ? coaching?.threat : undefined}
+                  highlights={[...(focusedSquare ? [focusedSquare] : []), ...(reviewing ? coaching?.targets || [] : [])]}
+                  lastMove={retry ? undefined : lastMove}
                   quality={
-                    current && !retry && !branch.length
+                    coachResult && !retry
                       ? {
-                          square: current.move.slice(playedView ? 2 : 0, playedView ? 4 : 2),
-                          label: current.label,
-                          name: LABEL_INFO[current.label].name,
-                          key: game.id + ":" + ply + ":" + current.label,
+                          square: coachResult.move.slice(2, 4),
+                          label: coachResult.label,
+                          name: t(LABEL_INFO[coachResult.label].name),
+                          key: game.id + ":" + effectiveFen,
                         }
                       : undefined
                   }
@@ -902,15 +959,15 @@ export default function App() {
               <div className="board-controls">
                 <button
                   className="icon-button"
-                  title="Flip board"
-                  aria-label="Flip board"
+                  title={t("Flip board")}
+                  aria-label={t("Flip board")}
                   onClick={() => setFlipped((f) => !f)}
                 >
                   <RotateCw size={18} />
                 </button>
                 <div className="move-controls">
                   <button
-                    aria-label="First move"
+                    aria-label={t("First move")}
                     onClick={() =>
                       branch.length ? setBranchIndex(0) : navigate(0)
                     }
@@ -918,7 +975,7 @@ export default function App() {
                     <ChevronsLeft size={21} />
                   </button>
                   <button
-                    aria-label="Previous move"
+                    aria-label={t("Previous move")}
                     onClick={() => navigate(ply - 1)}
                   >
                     <ChevronLeft size={23} />
@@ -929,13 +986,13 @@ export default function App() {
                       : `${ply}/${game.moves.length}`}
                   </span>
                   <button
-                    aria-label="Next move"
+                    aria-label={t("Next move")}
                     onClick={() => navigate(ply + 1)}
                   >
                     <ChevronRight size={23} />
                   </button>
                   <button
-                    aria-label="Last move"
+                    aria-label={t("Last move")}
                     onClick={() =>
                       branch.length
                         ? setBranchIndex(branch.length)
@@ -947,8 +1004,8 @@ export default function App() {
                 </div>
                 <button
                   className="icon-button"
-                  aria-label="Analysis settings"
-                  title="Analysis settings"
+                  aria-label={t("Analysis settings")}
+                  title={t("Analysis settings")}
                   onClick={() => setDialog("settings")}
                 >
                   <SlidersHorizontal size={18} />
@@ -957,20 +1014,11 @@ export default function App() {
               {branch.length > 0 && (
                 <div className="variation-strip">
                   <span>
-                    Exploring{" "}
+                    {t("Exploring")}{" "}
                     {variationSan(branchOrigin, branch)
                       .slice(0, branchIndex)
-                      .join(" ") || "starting position"}
+                      .join(" ") || t("starting position")}
                   </span>
-                  <button
-                    onClick={() => {
-                      setBranch([]);
-                      setEngineResult(null);
-                    }}
-                  >
-                    <Undo2 size={15} />
-                    Return to game
-                  </button>
                 </div>
               )}
               {results.length > 0 && (
@@ -984,12 +1032,10 @@ export default function App() {
                   }}
                 >
                   <summary>
-                    Game advantage<span>Who had the edge?</span>
+                    {t("Game advantage")}<span>{t("Who had the edge?")}</span>
                   </summary>
                   <p>
-                    Above the middle favours White. Below favours Black. Select
-                    a point to revisit that moment.
-                  </p>
+                    {t("Above the middle favours White. Below favours Black. Select a point to revisit that moment.")}</p>
                   <Graph
                     results={results}
                     total={game.moves.length}
@@ -1004,13 +1050,13 @@ export default function App() {
               {prefs.advanced && (
                 <div className="engine-footnote">
                   <span>
-                    Stockfish 19 lite / depth{" "}
+                    {t("Stockfish 19 lite / depth")}{" "}
                     {game.review?.depth || prefs.depth}
                   </span>
                   <span>
                     {game.review?.completed
-                      ? "Saved on this device"
-                      : `${results.length}/${game.moves.length} moves analysed`}
+                      ? t("Saved on this device")
+                      : t('Moves analysed: {done}/{total}', { done: results.length, total: game.moves.length })}
                   </span>
                 </div>
               )}
@@ -1024,11 +1070,8 @@ export default function App() {
                   onClick={() => setView("review")}
                 >
                   <BookOpen size={16} />
-                  Review
-                </button>
-                {(prefs.advanced ||
-                  branch.length > 0 ||
-                  view === "analysis") && (
+                  {t("Review")}</button>
+                {(
                   <button
                     role="tab"
                     aria-selected={view === "analysis"}
@@ -1036,8 +1079,7 @@ export default function App() {
                     onClick={() => setView("analysis")}
                   >
                     <Search size={16} />
-                    Explore
-                  </button>
+                    {t("Explore")}</button>
                 )}
                 {isDesktop && (
                   <button
@@ -1047,8 +1089,7 @@ export default function App() {
                     onClick={() => setView("tutor")}
                   >
                     <MessageSquare size={16} />
-                    Tutor
-                  </button>
+                    {t("Tutor")}</button>
                 )}
               </div>
               {view === "tutor" ? (
@@ -1061,42 +1102,38 @@ export default function App() {
               ) : view === "analysis" ? (
                 <div className="analysis-panel">
                   <div className="section-heading">
-                    <h2>Explore the position</h2>
+                    <h2>{t("Explore the position")}</h2>
                     <span>
                       {new Chess(effectiveFen).turn() === "w"
-                        ? "White"
-                        : "Black"}{" "}
-                      to move
-                    </span>
+                        ? t("White")
+                        : t("Black")}{" "}
+                      {t("to move")}</span>
                   </div>
                   <p>
-                    Move pieces to explore an alternative. Ask the engine to
-                    compare candidate lines.
-                  </p>
+                    {t("Move pieces to explore an alternative. Ask the engine to compare candidate lines.")}</p>
                   <button
                     className="primary"
                     disabled={searching || busy}
                     onClick={() => void evaluate()}
                   >
-                    {searching ? "Evaluating…" : "Evaluate position"}
+                    {searching ? t("Evaluating…") : t("Evaluate position")}
                   </button>
                   {searching && (
                     <button onClick={() => positionAbort.current?.abort()}>
-                      Stop
-                    </button>
+                      {t("Stop")}</button>
                   )}
                   {engineResult && (
                     <div className="engine-lines">
                       <div className="section-heading">
-                        <strong>{cp(engineResult.score)}</strong>
-                        <span>Depth {engineResult.depth}</span>
+                        <strong>{cp(engineResult.score, t)}</strong>
+                        <span>{t("Depth")} {engineResult.depth}</span>
                       </div>
                       {engineResult.lines.map((l, i) => (
                         <button
                           key={i}
                           onClick={() => preview(l.pv, effectiveFen)}
                         >
-                          <strong>{cp(l.score)}</strong>
+                          <strong>{cp(l.score, t)}</strong>
                           <span>
                             {variationSan(effectiveFen, l.pv)
                               .slice(0, 10)
@@ -1108,9 +1145,8 @@ export default function App() {
                     </div>
                   )}
                   <label className="note-label">
-                    Position notes
-                    <textarea
-                      placeholder="What did you notice?"
+                    {t("Position notes")}<textarea
+                      placeholder={t("What did you notice?")}
                       value={game.notes?.[ply] || ""}
                       onChange={(e) =>
                         updateGame(game.id, {
@@ -1135,8 +1171,8 @@ export default function App() {
                     <div className="section-heading">
                       <h2>
                         {game.review?.completed
-                          ? "Your review"
-                          : "Review this game"}
+                          ? t("Your review")
+                          : t("Review this game")}
                       </h2>
                     </div>
                     {results.length > 0 && (
@@ -1154,8 +1190,7 @@ export default function App() {
                     )}
                     {!results.length && (
                       <p className="review-intro">
-                        Find the moments that mattered and try a better move.
-                      </p>
+                        {t("Find the moments that mattered and try a better move.")}</p>
                     )}
                     {!game.review?.completed || busy ? (
                       <>
@@ -1167,21 +1202,20 @@ export default function App() {
                           >
                             <Play size={16} />
                             {busy
-                              ? "Analysing…"
+                              ? t("Analysing…")
                               : results.length
-                                ? "Continue review"
-                                : "Start review"}
+                                ? t("Continue review")
+                                : t("Start review")}
                           </button>
                           {busy && (
                             <button
-                              aria-label="Pause analysis"
+                              aria-label={t("Pause analysis")}
                               onClick={() => abort.current?.abort()}
                             >
                               <Square size={14} />
-                              Pause
-                            </button>
+                              {t("Pause")}</button>
                           )}
-                          {prefs.advanced && <span>Depth {prefs.depth}</span>}
+                          {prefs.advanced && <span>{t("Depth")} {prefs.depth}</span>}
                         </div>
                         {busy && (
                           <div className="progress">
@@ -1196,24 +1230,22 @@ export default function App() {
                     ) : (
                       <div className="review-complete">
                         <Check size={15} />
-                        Review saved
-                        <button
+                        {t("Review saved")}<button
                           onClick={() => void runReview()}
                           disabled={busy}
                         >
-                          Reanalyse
-                        </button>
+                          {t("Reanalyse")}</button>
                       </div>
                     )}
                     {results.length > 0 && (
                       <details className="quality-details">
                         <summary>
-                          Move quality <span>Both players</span>
+                          {t("Move quality")}<span>{t("Both players")}</span>
                         </summary>
                         <div className="classifications">
                           {LABELS.map((label) => (
                             <button
-                              title={LABEL_INFO[label].description}
+                              title={t(LABEL_INFO[label].description)}
                               className={filter === label ? "chosen" : ""}
                               key={label}
                               onClick={() => {
@@ -1230,7 +1262,7 @@ export default function App() {
                               <span className={`badge label-${label}`}>
                                 {LABEL_INFO[label].symbol}
                               </span>
-                              <span>{LABEL_INFO[label].name}</span>
+                              <span>{t(LABEL_INFO[label].name)}</span>
                               <b>
                                 {
                                   results.filter(
@@ -1254,20 +1286,18 @@ export default function App() {
                   {results.length > 0 && (
                     <div className="guided-review">
                       <div className="section-heading">
-                        <h2>Turning points</h2>
+                        <h2>{t("Turning points")}</h2>
                         <div className="segmented">
                           <button
                             className={short ? "active" : ""}
                             onClick={() => setShort(true)}
                           >
-                            Short
-                          </button>
+                            {t("Short")}</button>
                           <button
                             className={!short ? "active" : ""}
                             onClick={() => setShort(false)}
                           >
-                            Full
-                          </button>
+                            {t("Full")}</button>
                         </div>
                       </div>
                       <div className="key-moves">
@@ -1282,7 +1312,7 @@ export default function App() {
                                 setPly(r.ply);
                               }}
                             >
-                              {badge(r)}
+                              {badge(r, t)}
                               <span>
                                 {Math.ceil(r.ply / 2)}
                                 {r.color === "b" ? "…" : "."} {r.san}
@@ -1291,19 +1321,15 @@ export default function App() {
                           ))}
                         {!keyResults.length && (
                           <p className="quiet">
-                            No major turning points found at this depth. Explore
-                            the moves below.
-                          </p>
+                            {t("No major turning points found at this depth. Explore the moves below.")}</p>
                         )}
                       </div>
                       <div className="key-navigation">
                         <button onClick={() => jumpKey(-1)}>
                           <ChevronLeft size={16} />
-                          Previous
-                        </button>
+                          {t("Previous")}</button>
                         <button onClick={() => jumpKey(1)}>
-                          Next moment
-                          <ChevronRight size={16} />
+                          {t("Next moment")}<ChevronRight size={16} />
                         </button>
                       </div>
                     </div>
@@ -1321,7 +1347,7 @@ export default function App() {
                         );
                         return (
                           <div key={phase}>
-                            <span>{phase}</span>
+                            <span>{t(phase)}</span>
                             <strong>
                               {rs.length ? accuracy(rs) + "%" : "-"}
                             </strong>
@@ -1335,7 +1361,7 @@ export default function App() {
                     open={prefs.advanced ? true : undefined}
                   >
                     <summary>
-                      All moves <span>{game.moves.length} moves</span>
+                      {t("All moves")}<span>{game.moves.length} {t("moves")}</span>
                     </summary>
                     <MoveList
                       game={game}
@@ -1354,8 +1380,8 @@ export default function App() {
         )
       )}
       <footer className="app-footer">
-        <span>ChessAsh by FlameDev</span>
-        <span>Reviews saved on this device.</span>
+        <span>{t("ChessAsh by FlameDev")}</span>
+        <span>{t("Reviews saved on this device.")}</span>
       </footer>
       {dialog && (
         <div
@@ -1368,15 +1394,15 @@ export default function App() {
             className="modal"
             role="dialog"
             aria-modal="true"
-            aria-label={dialog === "import" ? "Import games" : "Settings"}
+            aria-label={dialog === "import" ? t("Import games") : t("Settings")}
           >
             <div className="section-heading">
               <h2>
-                {dialog === "import" ? "Bring your games" : "Make it yours"}
+                {dialog === "import" ? t("Bring your games") : t("Make it yours")}
               </h2>
               <button
                 className="icon-button"
-                aria-label="Close dialog"
+                aria-label={t("Close dialog")}
                 disabled={importing}
                 onClick={() => setDialog(null)}
               >
@@ -1385,14 +1411,13 @@ export default function App() {
             </div>
             {dialog === "import" ? (
               <>
-                <p>Use your public Chess.com username. No password needed.</p>
+                <p>{t("Use your public Chess.com username. No password needed.")}</p>
                 <label>
-                  Chess.com username
-                  <input
+                  {t("Chess.com username")}<input
                     autoFocus
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Your username"
+                    placeholder={t("Your username")}
                     disabled={importing}
                   />
                 </label>
@@ -1402,31 +1427,27 @@ export default function App() {
                     checked={useAsMain}
                     onChange={(e) => setUseAsMain(e.target.checked)}
                   />
-                  This is my account. Keep it synced.
-                </label>
+                  {t("This is my account. Keep it synced.")}</label>
                 {accounts.mainUsername && !useAsMain && (
                   <p className="quiet">
-                    These games will have their own collection. Your main
-                    account stays {accounts.mainUsername}.
+                    {t("These games will have their own collection. Your main account stays")}{accounts.mainUsername}.
                   </p>
                 )}
                 <div className="import-options">
                   <label>
-                    Archives
-                    <select
+                    {t("Archives")}<select
                       value={months}
                       onChange={(e) => setMonths(Number(e.target.value))}
                     >
                       {[1, 3, 6, 12, 24].map((n) => (
                         <option key={n} value={n}>
-                          Latest {n} month{n > 1 ? "s" : ""}
+                          {t(`Latest ${n} month${n > 1 ? 's' : ''}`)}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label>
-                    Specific game link (optional)
-                    <input
+                    {t("Specific game link (optional)")}<input
                       value={gameLink}
                       onChange={(e) => setGameLink(e.target.value)}
                       placeholder="https://www.chess.com/game/live/…"
@@ -1439,18 +1460,15 @@ export default function App() {
                   onClick={() => void importAccount()}
                 >
                   {importing
-                    ? importStatus || "Fetching games…"
-                    : "Fetch finished games"}
+                    ? t(importStatus || "Fetching games…")
+                    : t("Fetch finished games")}
                 </button>
                 <p className="quiet">
-                  New games may take time to appear in Chess.com’s public
-                  archives.
-                </p>
-                <div className="divider">Or import a PGN</div>
+                  {t("New games may take time to appear in Chess.com’s public archives.")}</p>
+                <div className="divider">{t("Or import a PGN")}</div>
                 <label className="file-input">
                   <FolderOpen size={17} />
-                  Choose PGN file
-                  <input
+                  {t("Choose PGN file")}<input
                     type="file"
                     accept=".pgn,.txt"
                     onChange={async (e) => {
@@ -1467,8 +1485,8 @@ export default function App() {
                   />
                 </label>
                 <textarea
-                  aria-label="Paste PGN"
-                  placeholder="Paste PGN moves here…"
+                  aria-label={t("Paste PGN")}
+                  placeholder={t("Paste PGN moves here…")}
                   value={pgn}
                   onChange={(e) => setPgn(e.target.value)}
                 />
@@ -1483,41 +1501,40 @@ export default function App() {
                       }
                     }}
                   >
-                    Import PGN
-                  </button>
+                    {t("Import PGN")}</button>
                   <button
                     className="text-button"
                     onClick={() => addGames([parsePgn(DEMO, "Sample")])}
                   >
-                    Use the Opera game sample
-                  </button>
+                    {t("Use the Opera game sample")}</button>
                 </div>
               </>
             ) : (
               <>
                 <label>
-                  Appearance
-                  <select
+                  {t("Language")}<select id="app-language" aria-label={t("Language")} value={language} onChange={e => setLanguage(e.target.value as "en" | "it")}><option value="en">English</option><option value="it">Italiano</option></select>
+                </label>
+                <label>
+                  {t("Appearance")}<select
                     value={prefs.theme}
                     onChange={(e) =>
                       setPrefs({ ...prefs, theme: e.target.value })
                     }
                   >
-                    <option value="dark">Dark</option>
-                    <option value="light">Light</option>
+                    <option value="dark">{t("Dark")}</option>
+                    <option value="light">{t("Light")}</option>
                   </select>
                 </label>
                 <label>
-                  Text size
-                  <select
+                  {t("Text size")}<select
                     value={prefs.font}
                     onChange={(e) =>
                       setPrefs({ ...prefs, font: Number(e.target.value) })
                     }
                   >
-                    <option value="16">Standard</option>
-                    <option value="18">Large</option>
-                    <option value="20">Extra large</option>
+                    <option value="16">{t("Standard")}</option>
+                    <option value="18">{t("Large")}</option>
+                    <option value="20">{t("Extra large")}</option>
                   </select>
                 </label>
                 {(["sound", "reduced"] as const).map((key) => (
@@ -1529,15 +1546,13 @@ export default function App() {
                         setPrefs({ ...prefs, [key]: e.target.checked })
                       }
                     />
-                    {{ sound: "Move sounds", reduced: "Reduce motion" }[key]}
+                    {t({ sound: "Move sounds", reduced: "Reduce motion" }[key])}
                   </label>
                 ))}
                 <details className="advanced-settings">
-                  <summary>Advanced</summary>
+                  <summary>{t("Advanced")}</summary>
                   <p className="quiet">
-                    Extra tools for exploring positions and customising your
-                    reviews.
-                  </p>
+                    {t("Extra tools for exploring positions and customising your reviews.")}</p>
                   <label className="check-label">
                     <input
                       type="checkbox"
@@ -1547,26 +1562,22 @@ export default function App() {
                         if (!e.target.checked) setView("review");
                       }}
                     />
-                    Show analysis tools
-                  </label>
+                    {t("Show analysis tools")}</label>
                   <label>
-                    Analysis depth
-                    <select
+                    {t("Analysis depth")}<select
                       value={prefs.depth}
                       onChange={(e) =>
                         setPrefs({ ...prefs, depth: Number(e.target.value) })
                       }
                     >
-                      <option value="10">Battery saver</option>
-                      <option value="12">Standard</option>
-                      <option value="16">Deep</option>
-                      <option value="20">Extended</option>
+                      <option value="10">{t("Battery saver")}</option>
+                      <option value="12">{t("Standard")}</option>
+                      <option value="16">{t("Deep")}</option>
+                      <option value="20">{t("Extended")}</option>
                     </select>
                   </label>
                   <p className="quiet">
-                    Deeper analysis takes longer. On Android, analysis pauses
-                    when you leave the app and can be resumed.
-                  </p>
+                    {t("Deeper analysis takes longer. On Android, analysis pauses when you leave the app and can be resumed.")}</p>
                   <label className="check-label">
                     <input
                       type="checkbox"
@@ -1575,11 +1586,12 @@ export default function App() {
                         setPrefs({ ...prefs, arrows: e.target.checked })
                       }
                     />
-                    Show suggestion arrows
-                  </label>
+                    {t("Show suggestion arrows")}</label>
                   {isDesktop && (
                     <FoxashPanel
                       onReclassify={async () => {
+                        variationCache.current.clear();
+                        setVariationAttempt(n => n + 1);
                         if (!game?.review) return;
                         const review = await analyzeGame(game, {
                           depth: game.review.depth,
@@ -1593,21 +1605,13 @@ export default function App() {
                   )}
                 </details>
                 <details className="about-analysis">
-                  <summary>About your review</summary>
+                  <summary>{t("About your review")}</summary>
                   <p className="quiet">
-                    Scores and labels are ChessAsh’s own. They can change with
-                    deeper analysis and will differ from Chess.com.
-                  </p>
+                    {t("Scores and labels are ChessAsh’s own. They can change with deeper analysis and will differ from Chess.com.")}</p>
                   <p className="quiet">
-                    Accuracy averages 100 × exp(−centipawn loss / 300) across
-                    your moves. Loss is capped at 1,500 centipawns. This is a
-                    guide to this game, not your rating.
-                  </p>
+                    {t("Accuracy averages 100 × exp(−centipawn loss / 300) across your moves. Loss is capped at 1,500 centipawns. This is a guide to this game, not your rating.")}</p>
                   <p className="quiet">
-                    Stockfish 19 lite is included under GPLv3. Source and
-                    licences are included with the app. Foxash powers the
-                    Windows review rules.
-                  </p>
+                    {t("Stockfish 19 lite is included under GPLv3. Source and licences are included with the app. Foxash powers the Windows review rules.")}</p>
                 </details>
               </>
             )}
@@ -1629,6 +1633,7 @@ function MoveList({
   onSelect: (n: number) => void;
   filter: string;
 }) {
+  const { t } = useLanguage();
   const active = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     const button = active.current;
@@ -1649,11 +1654,11 @@ function MoveList({
   return (
     <div className="move-list">
       <div className="section-heading">
-        <h2>Moves</h2>
+        <h2>{t("Moves")}</h2>
         <span>
           {filter !== "all" && filter in LABEL_INFO
-            ? LABEL_INFO[filter as Label].name
-            : "Complete game"}
+            ? t(LABEL_INFO[filter as Label].name)
+            : t("Complete game")}
         </span>
       </div>
       <div className="moves-scroll">
@@ -1671,7 +1676,7 @@ function MoveList({
                   onClick={() => onSelect(n + 1)}
                 >
                   <span>{game.moves[n]}</span>
-                  {r && badge(r)}
+                  {r && badge(r, t)}
                 </button>
               );
             })}

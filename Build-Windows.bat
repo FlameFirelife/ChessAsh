@@ -1,6 +1,6 @@
 @echo off
 setlocal
-title ChessAsh v1.1 - Windows build
+title ChessAsh v1.2 - Windows build
 pushd "%~dp0"
 if errorlevel 1 exit /b 1
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\build-windows.ps1" %*

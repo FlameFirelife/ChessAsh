@@ -18,7 +18,7 @@ Dependencies are installed with `npm ci` when missing or when the lockfile chang
 Build-Windows.bat
 ```
 
-Output: `release/ChessAsh-Setup-1.1.0.exe`, with the version taken from `package.json`.
+Output: `release/ChessAsh-Setup-1.2.0.exe`, with the version taken from `package.json`.
 
 Electron packages the application directory; Inno Setup creates the installer. The default installation is per user and does not need administrator rights. It adds the application directory to the user's PATH, offers a desktop shortcut and creates a Start menu entry. In a new terminal, `chessash` opens the app.
 
@@ -32,7 +32,7 @@ Installer source is in `installer/ChessAsh.iss`. Executable and installer brandi
 Build-Android.bat
 ```
 
-Output: `release/ChessAsh-1.1.0-android.apk`. This is a release APK signed for sideloading. The script verifies the APK's signer and version metadata. `Build-Android.bat -Debug` builds a separate debug APK.
+Output: `release/ChessAsh-1.2.0-android.apk`. This is a release APK signed for sideloading. The script verifies the APK's signer and version metadata. `Build-Android.bat -Debug` builds a separate debug APK.
 
 The application ID stays `dev.flamedev.chessash`. Keep the existing signing key to install future release builds as updates. A debug APK or an APK signed with another key cannot be updated in place with this release key.
 

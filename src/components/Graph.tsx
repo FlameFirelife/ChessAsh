@@ -1,3 +1,4 @@
+import { useLanguage } from "../i18n";
 import { useId } from "react";
 import type { MoveReview } from "../core";
 export default function Graph({
@@ -11,6 +12,7 @@ export default function Graph({
   ply: number;
   onSelect: (ply: number) => void;
 }) {
+  const { t } = useLanguage();
   const id = "evaluation" + useId().replace(/:/g, "");
   const w = 640,
     h = 96;
@@ -28,7 +30,7 @@ export default function Graph({
       <svg
         viewBox={`0 0 ${w} ${h}`}
         role="img"
-        aria-label="Game advantage. White above the centre line, Black below. Use the slider to select a move."
+        aria-label={t("Game advantage. White above the centre line, Black below. Use the slider to select a move.")}
       >
         <defs>
           <linearGradient
@@ -102,7 +104,7 @@ export default function Graph({
         />
       </svg>
       <input
-        aria-label="Move on evaluation graph"
+        aria-label={t("Move on evaluation graph")}
         type="range"
         min="0"
         max={total}
@@ -110,9 +112,9 @@ export default function Graph({
         onChange={(e) => onSelect(Number(e.target.value))}
       />
       <div className="graph-caption">
-        <span>White above / Black below</span>
+        <span>{t("White above / Black below")}</span>
         <span>
-          Move {Math.ceil(ply / 2)} / {Math.ceil(total / 2)}
+          {t("Move")} {Math.ceil(ply / 2)} / {Math.ceil(total / 2)}
         </span>
       </div>
     </div>

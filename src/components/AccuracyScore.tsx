@@ -1,8 +1,10 @@
+import { useLanguage } from "../i18n";
 import { useEffect, useRef, useState } from "react";
 
 export default function AccuracyScore({ value, player, provisional, reduced }: {
   value: number; player: string; provisional: boolean; reduced: boolean;
 }) {
+  const { t } = useLanguage();
   const target = Math.max(0, Math.min(100, value));
   const [display, setDisplay] = useState(0);
   const latest = useRef(0);
@@ -26,7 +28,7 @@ export default function AccuracyScore({ value, player, provisional, reduced }: {
   }, [target, reduced]);
   const circumference = 2 * Math.PI * 40;
   return <div className={`accuracy-score ${target >= 80 ? "accuracy-high" : target >= 50 ? "accuracy-mid" : "accuracy-low"}`}>
-    <div className="accuracy-ring" role="img" aria-label={`${player}: ${target}% ChessAsh accuracy${provisional ? ", provisional" : ""}`} data-score={target}>
+    <div className="accuracy-ring" role="img" aria-label={`${player}: ${target}% ${t("Accuracy")}${provisional ? `, ${t("Review in progress")}` : ""}`} data-score={target}>
       <svg viewBox="0 0 100 100" aria-hidden="true">
         <circle className="ring-track" cx="50" cy="50" r="40" />
         <circle className="ring-progress" cx="50" cy="50" r="40" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - display / 100)} />
@@ -34,6 +36,6 @@ export default function AccuracyScore({ value, player, provisional, reduced }: {
       <strong aria-hidden="true">{Math.round(display)}<small>%</small></strong>
     </div>
     <span className="accuracy-player" title={player}>{player}</span>
-    <span className="accuracy-caption">{provisional ? "Review in progress" : "Accuracy"}</span>
+    <span className="accuracy-caption">{provisional ? t("Review in progress") : t("Accuracy")}</span>
   </div>;
 }
