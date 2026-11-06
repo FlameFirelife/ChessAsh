@@ -35,6 +35,8 @@ import Graph from "./components/Graph";
 import AccuracyScore from "./components/AccuracyScore";
 import ReviewMessage from "./components/ReviewMessage";
 import AccountLibrary from "./components/AccountLibrary";
+import Training from "./components/Training";
+import { trainingStorageKey } from "./core/training";
 import { useAccounts } from "./accounts";
 import TutorPanel from "./desktop/TutorPanel";
 import {
@@ -151,7 +153,8 @@ export default function App() {
     );
   const [ply, setPly] = useState(0),
     [view, setView] = useState<"review" | "analysis" | "tutor">("review"),
-    [screen, setScreen] = useState<"board" | "library">("board");
+    [screen, setScreen] = useState<"board" | "library" | "training">(() => localStorage.getItem("chessash:screen") === "training" ? "training" : "board");
+  useEffect(() => { try { localStorage.setItem("chessash:screen", screen); } catch {} }, [screen]);
   const [prefs, setPrefs] = useState<Prefs>(prefLoad),
     [dialog, setDialog] = useState<"import" | "settings" | null>(null),
     [flipped, setFlipped] = useState(false);
@@ -367,7 +370,7 @@ export default function App() {
   useEffect(() => {
     function key(e: KeyboardEvent) {
       if (
-        dialog ||
+        screen !== "board" || dialog ||
         ["INPUT", "TEXTAREA", "SELECT"].includes(
           (e.target as HTMLElement).tagName,
         )
@@ -390,7 +393,7 @@ export default function App() {
     }
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [ply, game, dialog, branch, branchIndex]);
+  }, [ply, game, dialog, branch, branchIndex, screen]);
   useEffect(() => {
     const stop = () => {
       if (document.hidden && Capacitor.isNativePlatform()) {
@@ -417,12 +420,12 @@ export default function App() {
   function updateGame(id: string, patch: Partial<Game>) {
     setGames((gs) => gs.map((g) => (g.id === id ? { ...g, ...patch } : g)));
   }
-  function openGame(g: Game) {
+  function openGame(g: Game, targetPly?: number) {
     abort.current?.abort();
     positionAbort.current?.abort();
     setActiveId(g.id);
     localStorage.setItem("chessash:active", g.id);
-    setPly(g.lastPly || 0);
+    setPly(targetPly ?? (g.lastPly || 0));
     setScreen("board");
     setFilter("all");
     setView("review");
@@ -716,6 +719,7 @@ export default function App() {
             <Library size={17} />
             {t("Library")}<span className="count">{games.length}</span>
           </button>
+          <button className={screen === "training" ? "nav-active" : ""} onClick={() => setScreen("training")}><Play size={17} />{language === "it" ? "Allenamento" : "Training"}</button>
         </nav>
         <div className="header-actions">
           <button
@@ -780,6 +784,8 @@ export default function App() {
             />
           </div>
         </main>
+      ) : screen === "training" ? (
+        <Training key={trainingStorageKey(accounts.mainUsername)} games={games} username={accounts.mainUsername} onLibrary={() => setScreen("library")} onSource={(source, position) => { setBranch([]); setPractice(null); setRetry(false); openGame(source, position); }} />
       ) : screen === "library" ? (
         <div className="library-screen">
           <AccountLibrary
@@ -867,7 +873,7 @@ export default function App() {
                           : branchIndex ? t("Reviewing your move…") : t("Try a move on the board.")
                       : results.length
                         ? t("Your review is ready. Let’s look at a turning point.")
-                        : t("Let’s look at this game together. Start a review to find the moments worth practising.")
+                        : t("Let’s look at this game together. Start a review to find the moments worth practicing.")
                   }
                   detail={coaching?.best}
                   expandedDetail={coaching?.detail}
@@ -905,7 +911,6 @@ export default function App() {
                 <div className="review-position-controls" aria-label={t("Review position")}>
                   {branch.length > 0 && <div className="temporary-review-tools"><strong className="temporary-review-label">{t("Temporary move review")}</strong><button onClick={() => { setBranch([]); setEngineResult(null); }}>{t("Return to game")}</button></div>}
                   {branch.length > 0 && variationState.key === variationKey && variationState.error && <button onClick={() => setVariationAttempt(n => n + 1)}>{t("Try again")}</button>}
-                  <span>{retry ? t("Try a move on the board.") : reviewing ? t("Blue: best alternative. Focus a square in the explanation to see the reply.") : branch.length ? t("This move is outside the saved game.") : t("Select a reviewed move to see the feedback.")}</span>
                 </div>
               </div>
               <div className="player-strip">

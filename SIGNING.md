@@ -23,9 +23,9 @@ The build validates the certificate before packaging, signs `release/win-unpacke
 
 With no identity configured, `Build-Windows.bat` warns and builds unsigned for local testing. `-RequireSigned` fails before packaging if no usable identity exists. An invalid configured identity stops the build rather than silently producing an unsigned installer.
 
-No trusted Windows signing certificate is installed on the development PC as of this follow-up. The signed build path has not been exercised with a real certificate. Cloud signing services need their own approved account and integration; this local certificate-store setup does not configure those services automatically.
+No trusted Windows signing certificate is configured for the v1.3 source build. The signed build path has not been exercised with a real certificate. Cloud signing services need their own approved account and integration; this local certificate-store setup does not configure those services automatically.
 
-[SignPath Foundation](https://signpath.org/apply) accepts applications for free open-source signing, subject to its [conditions and review](https://signpath.org/terms). Its certificate identifies SignPath Foundation as publisher. No application or account setup has been submitted for ChessAsh.
+[SignPath Foundation](https://signpath.org/apply) accepts applications for free open-source signing, subject to its [conditions and review](https://signpath.org/terms). Its certificate identifies SignPath Foundation as publisher.
 
 Keep private keys, tokens, passwords and certificate exports out of the repository. Do not add a locally generated certificate to users' trusted roots to bypass installation warnings.
 
@@ -33,4 +33,4 @@ Keep private keys, tokens, passwords and certificate exports out of the reposito
 
 Android release builds already verify the APK signature. Keep `.private/android-release.jks` and its password safe so future versions update existing installations. Do not replace this key to change a warning or displayed name. See [BUILDING.md](BUILDING.md) for backup details and [Android's signing documentation](https://developer.android.com/studio/publish/app-signing) for the update requirements.
 
-A signed APK is not proof of store approval or developer verification. Sideloading, Play Protect and developer-verification messages need to be identified by their exact wording before choosing a remedy. The reported Android warning has not yet been identified, and no warning-removal claim is made.
+A signed APK is not proof of store approval or developer verification. Sideloading, Play Protect and developer-verification messages need to be identified by their exact wording before choosing a remedy. V1.3 does not claim to remove those warnings. Its planned version code is 6; the existing Android update identity must be preserved when building it.

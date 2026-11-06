@@ -1,0 +1,39 @@
+name: Publish verified v1.3 downloads
+on:
+  push:
+    branches: [release-upload-v1.3]
+permissions:
+  contents: write
+concurrency:
+  group: release-v1.3
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Assemble and verify downloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .release-upload/windows.part* > ChessAsh-Setup-1.3.0.exe
+          cp .release-upload/ChessAsh-1.3.0-android.apk .
+          cp .release-upload/ChessAsh-1.3.0-SHA256SUMS.txt .
+          sha256sum -c ChessAsh-1.3.0-SHA256SUMS.txt
+          target=$(cat .release-upload/target.txt)
+          test "$target" = "$(git rev-parse origin/main)"
+          test "$(git show "$target:package.json" | jq -r .version)" = 1.3.0
+          git diff --exit-code "$target" HEAD -- src electron rules android package.json package-lock.json build installer scripts docs README.md README_GITHUB.md BUILDING.md PLATFORMS.md SIGNING.md Build-Windows.bat Build-Android.bat TRAINING_GUIDE.md CREDITS.md THIRD_PARTY_NOTICES.md
+      - name: Publish v1.3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          target=$(cat .release-upload/target.txt)
+          gh release create V1.3 ChessAsh-Setup-1.3.0.exe ChessAsh-1.3.0-android.apk ChessAsh-1.3.0-SHA256SUMS.txt --target "$target" --title V1.3 --notes-file docs/releases/V1.3.md --latest
+      - name: Remove temporary upload branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method DELETE repos/${{ github.repository }}/git/refs/heads/release-upload-v1.3

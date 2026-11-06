@@ -3,6 +3,7 @@ contextBridge.exposeInMainWorld('chessash', {
   platform: 'windows',
   apiFetch: url => ipcRenderer.invoke('api:fetch', url),
   reviewFacts: (facts, pack) => ipcRenderer.invoke('policy:review', facts, pack),
+  trainingDecisions: facts => ipcRenderer.invoke('policy:training', facts),
   policyGetPack: () => ipcRenderer.invoke('policy:pack:get'),
   policySavePack: pack => ipcRenderer.invoke('policy:pack:save', pack),
   tutorModels: config => ipcRenderer.invoke('tutor:models', config),

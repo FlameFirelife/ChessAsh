@@ -62,6 +62,7 @@ app.whenReady().then(() => {
     return require('./policy.cjs').reviewFacts(facts, resourcesRoot, pack || await readPack());
   });
   handle('policy:pack:get', readPack);
+  handle('policy:training', facts => require('./training-policy.cjs').trainingDecisions(facts, resourcesRoot));
   handle('policy:pack:save', async pack => {
     const validated = require('./policy.cjs').validatePack(pack);
     await fs.mkdir(app.getPath('userData'), { recursive: true });

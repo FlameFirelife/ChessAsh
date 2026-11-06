@@ -12,17 +12,24 @@ Get the Windows installer or Android APK from [Releases](https://github.com/Flam
 - Shows the best move with arrows and highlights, with piece-and-square explanations linked to the board.
 - Lets you retry positions and reviews moves you try without changing the saved game.
 - Supports English and Italian, with explanations from your side of the game.
+- Builds personalized practice from mistakes in your reviewed games, tracks recurring problems and brings positions back for another try.
+- Explains failed practice moves with playable replies and gives you a recap of independent solves, retries and positions to revisit.
+- Resumes unfinished training sessions, links exercises to the original review position and tracks progress by pattern across sessions.
 - Keeps your main account's latest games synced while the app is active, with separate library collections for other imported players.
 - Saves games, reviews and notes locally. Saved reviews work offline.
 - Offers optional Windows tutoring through local Ollama or a compatible API provider. API charges may apply.
 
 The review screen keeps explanations above the board. The main header stays visible while scrolling, and the desktop board uses the available width. Move feedback and piece movement animate, with a reduced-motion setting. Detailed notation, the advantage graph and advanced analysis controls are optional.
 
+Training offers focused practice or short mixed sessions, with exercises for undefended pieces, forks, back-rank mates and other missed opportunities. See the [training guide](TRAINING_GUIDE.md) to get started.
+
 ## Foxash in the app
 
-[`rules/review.foxash`](rules/review.foxash) receives chess facts and engine evaluations, then chooses move labels, key moments and the first hint. Coaching packs can change its thresholds without rerunning Stockfish.
+[`rules/review.foxash`](rules/review.foxash) receives chess facts and engine evaluations, then chooses move labels, key moments and retry guidance. Coaching packs can change its thresholds without rerunning Stockfish.
 
 The runtime ships with the Windows app, so users do not need to install Foxash separately. Android uses matching default rules in TypeScript. Foxash's MIT licence and source archive are included alongside the bundled runtime.
+
+[`rules/training.foxash`](rules/training.foxash) chooses training priorities, coaching focus and repeat intervals from your practice history and verified chess facts.
 
 ## Build it
 
@@ -51,6 +58,8 @@ See [BUILDING.md](BUILDING.md) for tool discovery, release metadata, versioning 
 Chess.com imports use its public API and need a username, not a password. Public archives can take time to include a new game. Main-account sync checks while the app is visible and online; it does not run after the app closes.
 
 The app's scores and move labels are its own and will differ from Chess.com. Deeper searches can change a result. The bundled Stockfish lite engine uses a smaller network than full Stockfish. Opening recognition currently uses a small authored map.
+
+Training uses completed reviews from your side of the game. Practice history stays on your device and is kept separate from saved games and reviews. It does not require an AI model or API key.
 
 Ollama can run locally. API tutoring sends game context, engine findings and recent chat to the provider you select. There is no silent switch to a cloud model. Model explanations can still be wrong.
 

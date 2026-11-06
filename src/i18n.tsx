@@ -93,7 +93,7 @@ Game review|Revisione della partita
 Export annotated PGN|Esporta PGN con annotazioni
 PGN exported.|PGN esportato.
 Your review is ready. Let’s look at a turning point.|La revisione è pronta. Vediamo un momento decisivo.
-Let’s look at this game together. Start a review to find the moments worth practising.|Guardiamo insieme questa partita. Avvia la revisione per trovare i momenti su cui esercitarti.
+Let’s look at this game together. Start a review to find the moments worth practicing.|Guardiamo insieme questa partita. Avvia la revisione per trovare i momenti su cui esercitarti.
 Find a strong move on the board.|Trova una buona mossa sulla scacchiera.
 Review position|Posizione della revisione
 Best move · before|Mossa migliore · prima

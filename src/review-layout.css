@@ -40,8 +40,8 @@ html {
   font-size: .75rem;
 }
 .review-message-slot {
-  block-size: 15rem;
-  min-block-size: 15rem;
+  block-size: 13rem;
+  min-block-size: 13rem;
   contain: layout;
 }
 .review-message-slot .board-message {
@@ -82,9 +82,9 @@ html {
   margin: .5rem 0;
 }
 .review-controls-slot {
-  block-size: 4rem;
-  min-block-size: 4rem;
-  padding-top: .5rem;
+  block-size: 2rem;
+  min-block-size: 2rem;
+  padding-top: .125rem;
 }
 .review-controls-slot .review-position-controls {
   margin: 0;
@@ -148,8 +148,11 @@ html {
   }
 }
 @media (max-width: 780px) {
+  .app-header nav { flex-basis:100%; min-width:0; width:100%; gap:4px; }
+  .app-header nav button { min-width:0; gap:4px; padding-inline:6px; }
   .review-message-slot {
-    block-size: 16rem;
-    min-block-size: 16rem;
+    block-size: 14rem;
+    min-block-size: 14rem;
   }
 }
+@media (max-width:360px) { .app-header nav button>svg { display:none; } }

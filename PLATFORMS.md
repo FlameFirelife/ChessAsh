@@ -8,13 +8,15 @@ Run `Build-Windows.bat` or `npm run package:win`. This uses Electron for the app
 
 `electron/main.cjs` owns the narrow native bridge. Renderer code has no Node access. Chess.com requests are restricted to the documented HTTPS public API. API keys are encrypted with Electron safeStorage for the current Windows user. Keys are never returned to the renderer after saving. Changing the configured endpoint discards the saved key, avoiding accidental disclosure to a different service.
 
-The bundled Foxash runtime executes only the bundled review script. Custom coaching packs contain validated numeric thresholds, not arbitrary executable scripts. The original Foxash repository is not modified.
+The bundled Foxash 1.4.0 runtime executes the bundled `review.foxash` and `training.foxash` scripts. Review rules choose move labels and key moments; training rules choose coaching focus, queue priorities and repeat intervals. Both bridges validate input/output and use isolated temporary directories. Custom coaching packs contain numeric review thresholds, not executable scripts. The original Foxash repository is not modified.
 
 `node scripts/package-smoke.mjs` launches a hidden isolated development profile and tests the preload bridge, a real Foxash classification change, API allowlisting and credential storage. This is separate from end-to-end interface and installed-package verification.
 
-Existing v1.2 Windows packages are unsigned. Local builds can use a trusted certificate via `CHESSASH_SIGNING_THUMBPRINT` and `Build-Windows.bat -RequireSigned`; see [SIGNING.md](SIGNING.md). The app, installer and uninstaller are signed when configured. No trusted certificate is installed on the development PC yet, so signed output has not been verified. SmartScreen reputation warnings can persist even with a valid signature.
+Existing Windows downloads are unsigned. Local builds can use a trusted certificate via `CHESSASH_SIGNING_THUMBPRINT` and `Build-Windows.bat -RequireSigned`; see [SIGNING.md](SIGNING.md). The app, installer and uninstaller are signed when configured. No trusted certificate is installed on the development PC yet, so signed output has not been verified. SmartScreen reputation warnings can persist even with a valid signature.
 
-The desktop layout sizes the board from available width and scrolls vertically in short windows. The main header stays pinned on both platforms; the review panel accounts for its measured height. Library search and filters remain in normal document flow. These changes are included when building version 1.2.5.
+The Windows package targets x86-64. The bundled Foxash executable has the matching x64 architecture. This is a target declaration, not a claim that every processor or native ARM64 execution has been tested.
+
+The desktop board uses available width and short windows scroll vertically. The main header stays pinned on both platforms. V1.3 tightens the space above the review board and updates movement, capture and feedback animations while preserving reduced-motion support.
 
 ## Android
 
@@ -33,6 +35,12 @@ The signing key is `.private/android-release.jks`; its randomly generated passwo
 The debug APK uses a different key. Replacing a debug install with a release install requires uninstalling the debug app first, which clears its local library. Export any games you want to keep before doing that. The build script refuses partial/mismatched signing file state rather than overwriting an existing key.
 
 The Android file plugin invokes the system document picker for PGN exports, avoiding WebView blob-download limitations and broad storage permissions. PGN imports use the WebView's file picker. Network imports use Capacitor HTTP and saved reviews run without a network connection.
+
+Android supports the shared training interface, local Stockfish grading and separate practice history. Matching TypeScript defaults provide review and training decisions; the Windows Foxash executable is not used on Android. Tests compare its training focus, priorities and repeat intervals against the actual Foxash runtime.
+
+## V1.3 verification and release state
+
+Release source is version 1.3.0 with Android code 6. Current unit tests pass (84 passed, one optional network test skipped), and the interface build and real-engine Windows training UI check pass. Full app restart, source-position navigation and persistent progress checks also pass. These checks cover EN/IT and a 390px viewport, with original reviews and notes preserved. They do not establish physical Android or installed-upgrade behaviour. Fresh packages are produced by the build commands above.
 
 ## Sources
 

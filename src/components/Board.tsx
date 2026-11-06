@@ -185,7 +185,7 @@ export default function Board({
           {pieces.views.map((p) => (
             <img
               draggable="false"
-              className={`moving-piece ${pieces.moving.includes(p.id) ? "piece-in-motion" : ""}`}
+              className={`moving-piece ${pieces.moving.includes(p.id) ? "piece-in-motion" : ""} ${selected === p.sq ? "piece-selected" : ""}`}
               data-piece-id={p.id}
               data-square={p.sq}
               key={p.id}

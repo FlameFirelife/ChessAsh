@@ -58,7 +58,7 @@ export default function ReviewMessage({
         <div className="speech-heading">
           <strong>{it ? "Allenatore" : "Coach"}</strong>
           {result && (
-            <span className={`message-quality quality-${result.label}`}>
+            <span key={`${result.ply}:${result.move}:${result.label}`} className={`message-quality quality-${result.label}`}>
               <QualityIcon label={result.label} size={15} />
               {moveNumber || Math.ceil(result.ply / 2)}{result.color === "b" ? "…" : "."} {result.san}{" "}
               <span>{it ? italianLabels[result.label] : LABEL_INFO[result.label].name}</span>

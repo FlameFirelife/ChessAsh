@@ -1,6 +1,6 @@
 @echo off
 setlocal
-title ChessAsh v1.2.5 - Android build
+title ChessAsh v1.3 - Android build
 pushd "%~dp0"
 if errorlevel 1 exit /b 1
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\build-android.ps1" %*

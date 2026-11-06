@@ -1,0 +1,66 @@
+read "training-facts.json" into request
+define rows = []
+define focuses = []
+define index = 1
+define captures = 0
+define checks = 0
+define replies = 0
+define improvements = 0
+define undefendeds = 0
+define forks = 0
+define backranks = 0
+
+function focus(fact) {
+    when fact["backrank"] { give "backrank" }
+    when fact["fork"] { give "fork" }
+    when fact["undefended"] { give "undefended" }
+    when fact["replyDanger"] { give "reply" }
+    when fact["bestCapture"] { give "capture" }
+    when fact["bestCheck"] { give "check" }
+    give "improve"
+}
+
+function interval(fact) {
+    when fact["passed"] == false { give 600 }
+    when fact["streak"] == 0 { give 86400 }
+    when fact["streak"] == 1 { give 259200 }
+    when fact["streak"] == 2 { give 604800 }
+    when fact["streak"] == 3 { give 1209600 }
+    give 2592000
+}
+
+loop groups[
+    when index > request["count"] { end groups }
+    define category = focus(request["facts"][index])
+    add category to focuses
+    when category == "reply" { replies = replies + 1 }
+    when category == "capture" { captures = captures + 1 }
+    when category == "check" { checks = checks + 1 }
+    when category == "improve" { improvements = improvements + 1 }
+    when category == "undefended" { undefendeds = undefendeds + 1 }
+    when category == "fork" { forks = forks + 1 }
+    when category == "backrank" { backranks = backranks + 1 }
+    index = index + 1
+]
+index = 1
+loop decisions[
+    when index > request["count"] { end decisions }
+    define fact = request["facts"][index]
+    define category = focuses[index]
+    define frequency = improvements
+    when category == "reply" { frequency = replies }
+    when category == "capture" { frequency = captures }
+    when category == "check" { frequency = checks }
+    when category == "undefended" { frequency = undefendeds }
+    when category == "fork" { frequency = forks }
+    when category == "backrank" { frequency = backranks }
+    define errors = fact["attempts"] - fact["solved"]
+    define priority = errors * 4
+    when fact["attempts"] == 0 { priority = 3 }
+    define loss = fact["loss"]
+    when loss > 600 { loss = 600 }
+    priority = priority + frequency + loss / 100
+    add [category, priority, interval(fact)] to rows
+    index = index + 1
+]
+save rows to "training-policy.json"
