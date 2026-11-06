@@ -54,7 +54,7 @@ The app's scores and move labels are its own and will differ from Chess.com. Dee
 
 Ollama can run locally. API tutoring sends game context, engine findings and recent chat to the provider you select. There is no silent switch to a cloud model. Model explanations can still be wrong.
 
-Windows uses Electron and Android uses Capacitor. Both render their interface with web technology inside the app. Windows builds are currently unsigned. Android has been checked in an emulator; physical-device testing is still needed.
+Windows uses Electron and Android uses Capacitor. Both render their interface with web technology inside the app. Windows builds are currently unsigned. Android has been checked both in an emulator and a physical device; physical-device testing will still be needed for updates.
 
 ## Contributing
 
