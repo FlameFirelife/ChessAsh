@@ -10,7 +10,7 @@ Copyright the Stockfish contributors and Stockfish.js contributors. GPL version 
 
 ## Foxash
 
-Foxash 1.4.0 by FlameDev Studios, MIT licence. Repository: [github.com/FlameFirelife/foxash](https://github.com/FlameFirelife/foxash/). Windows bundles the existing release executable and source archive from that project; licence is included in `resources/foxash`. The `.foxash` review and training programs are ChessAsh source. Original Foxash source was not modified.
+Foxash 1.4.0 by FlameDev Studios, MIT licence. Repository: [github.com/FlameFirelife/foxash](https://github.com/FlameFirelife/foxash/). Windows bundles the existing release executable and source archive from that project; licence is included in `resources/foxash`. The `.foxash` review and training programs are ChessAsh source.
 
 ## Chess pieces
 
