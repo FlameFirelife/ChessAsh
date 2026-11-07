@@ -25,3 +25,4 @@ STATUS.md
 BUILDLOG.md
 NATIVE_REBUILD.md
 .release-upload/
+scripts/preview-animations.mjs

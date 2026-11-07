@@ -8,21 +8,21 @@ Run `Build-Windows.bat` or `npm run package:win`. This uses Electron for the app
 
 `electron/main.cjs` owns the narrow native bridge. Renderer code has no Node access. Chess.com requests are restricted to the documented HTTPS public API. API keys are encrypted with Electron safeStorage for the current Windows user. Keys are never returned to the renderer after saving. Changing the configured endpoint discards the saved key, avoiding accidental disclosure to a different service.
 
-The bundled Foxash 1.4.0 runtime executes the bundled `review.foxash` and `training.foxash` scripts. Review rules choose move labels and key moments; training rules choose coaching focus, queue priorities and repeat intervals. Both bridges validate input/output and use isolated temporary directories. Custom coaching packs contain numeric review thresholds, not executable scripts. The original Foxash repository is not modified.
+The bundled Foxash 1.4.0 runtime executes the bundled `review.foxash` and `training.foxash` scripts. Review rules choose move labels and key moments; training rules choose coaching focus, queue priorities and repeat intervals. Both bridges validate input/output and use isolated temporary directories. Custom coaching packs contain numeric review thresholds, not executable scripts.
 
 `node scripts/package-smoke.mjs` launches a hidden isolated development profile and tests the preload bridge, a real Foxash classification change, API allowlisting and credential storage. This is separate from end-to-end interface and installed-package verification.
 
 Existing Windows downloads are unsigned. Local builds can use a trusted certificate via `CHESSASH_SIGNING_THUMBPRINT` and `Build-Windows.bat -RequireSigned`; see [SIGNING.md](SIGNING.md). The app, installer and uninstaller are signed when configured. No trusted certificate is installed on the development PC yet, so signed output has not been verified. SmartScreen reputation warnings can persist even with a valid signature.
 
-The Windows package targets x86-64. The bundled Foxash executable has the matching x64 architecture. This is a target declaration, not a claim that every processor or native ARM64 execution has been tested.
+The Windows package targets x86-64. The bundled Foxash executable has the matching x64 architecture.
 
-The desktop board uses available width and short windows scroll vertically. The main header stays pinned on both platforms. V1.3 tightens the space above the review board and updates movement, capture and feedback animations while preserving reduced-motion support.
+The desktop board uses available width and short windows scroll vertically. The main header stays pinned on both platforms. Windows opens maximized. Movement, capture and feedback animations respect reduced-motion preferences. Android uses Capacitor SystemBars safe-area insets to keep the interface clear of status/navigation bars and display cutouts.
 
 ## Android
 
 Prerequisites: Node 22+, JDK 21, Android SDK platform 36, SDK build tools and an Android device or emulator for runtime verification.
 
-The project sets minimum Android API 24. Stockfish also requires a recent Android System WebView with WebAssembly support; an old OS version alone does not establish engine compatibility. Earlier runtime verification used an Android 16/API 36 x86_64 emulator. The author reports that v1.2 works on Android; the agent's v1.2 interface checks used a phone-sized Electron viewport, not a physical device.
+The project sets minimum Android API 24. Stockfish also requires a recent Android System WebView with WebAssembly support; an old OS version alone does not establish engine compatibility.
 
 The source archive does not include downloaded SDKs or Gradle caches. Install Android Studio/SDK from the official Android Developers site, use SDK Manager to install platform 36 and build tools, set `ANDROID_SDK_ROOT` to that SDK directory and `JAVA_HOME` to JDK 21, then use the commands below. The project also supports a project-local SDK at `work/android-sdk` when supplied. Do not assume the author's local SDK path exists after extracting source elsewhere.
 
@@ -38,9 +38,9 @@ The Android file plugin invokes the system document picker for PGN exports, avoi
 
 Android supports the shared training interface, local Stockfish grading and separate practice history. Matching TypeScript defaults provide review and training decisions; the Windows Foxash executable is not used on Android. Tests compare its training focus, priorities and repeat intervals against the actual Foxash runtime.
 
-## V1.3 verification and release state
+## V1.4 verification and release state
 
-Release source is version 1.3.0 with Android code 6. Current unit tests pass (84 passed, one optional network test skipped), and the interface build and real-engine Windows training UI check pass. Full app restart, source-position navigation and persistent progress checks also pass. These checks cover EN/IT and a 390px viewport, with original reviews and notes preserved. They do not establish physical Android or installed-upgrade behaviour. Fresh packages are produced by the build commands above.
+Release source is version 1.4.0 with Android code 7. Current unit tests pass (87 passed, one optional network test skipped), and the interface build and real-engine Windows training UI check pass. Full app restart, source-position navigation and persistent progress checks also pass. These checks cover EN/IT and a 390px viewport, with original reviews and notes preserved. They do not establish physical Android or installed-upgrade behaviour. Fresh packages are produced by the build commands above.
 
 ## Sources
 

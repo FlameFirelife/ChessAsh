@@ -31,6 +31,10 @@ import { playerColorFor } from "./core/perspective";
 import { reviewVariationMove } from "./core/variationReview";
 import { version as appVersion } from "../package.json";
 import Board from "./components/Board";
+import MoveCounter from './components/MoveCounter';
+import { useReducedMotion } from './hooks/useReducedMotion';
+import { useButtonFeedback } from './hooks/useButtonFeedback';
+import './review-polish.css';
 import Graph from "./components/Graph";
 import AccuracyScore from "./components/AccuracyScore";
 import ReviewMessage from "./components/ReviewMessage";
@@ -136,6 +140,7 @@ async function download(name: string, text: string) {
 }
 
 export default function App() {
+  useButtonFeedback();
   const { language, setLanguage, t } = useLanguage();
   useLayoutEffect(() => {
     const header = document.querySelector<HTMLElement>('.app-header');
@@ -442,22 +447,6 @@ export default function App() {
     setPly(p);
     updateGame(game.id, { lastPly: p });
   }
-  function sound() {
-    if (!prefs.sound) return;
-    try {
-      const a = new AudioContext();
-      const o = a.createOscillator(),
-        v = a.createGain();
-      o.connect(v);
-      v.connect(a.destination);
-      o.frequency.value = 440;
-      v.gain.setValueAtTime(0.025, a.currentTime);
-      v.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.07);
-      o.start();
-      o.stop(a.currentTime + 0.08);
-      o.onended = () => void a.close();
-    } catch {}
-  }
   function addGames(list: Game[]) {
     const merged = mergeGames(gamesRef.current, list);
     setGames(merged);
@@ -601,7 +590,6 @@ export default function App() {
     
         preview([retryResult.best], retryGame.positions[retryResult.ply - 1]);
         setBranchIndex(1);
-        sound();
         return;
       }
       if (busy) {
@@ -624,7 +612,6 @@ export default function App() {
           setRetry(false);
           preview([uci], retryGame.positions[retryResult.ply - 1]);
           setBranchIndex(1);
-          sound();
         } else {
           setRetryText(
             "There is a stronger move. Return to the review to compare it or play the continuation.",
@@ -644,7 +631,6 @@ export default function App() {
       setBranch(next);
       setBranchIndex(next.length);
       setEngineResult(null);
-      sound();
     } catch {}
   }
   function preview(
@@ -785,7 +771,7 @@ export default function App() {
           </div>
         </main>
       ) : screen === "training" ? (
-        <Training key={trainingStorageKey(accounts.mainUsername)} games={games} username={accounts.mainUsername} onLibrary={() => setScreen("library")} onSource={(source, position) => { setBranch([]); setPractice(null); setRetry(false); openGame(source, position); }} />
+        <Training soundEnabled={prefs.sound} key={trainingStorageKey(accounts.mainUsername)} games={games} username={accounts.mainUsername} onLibrary={() => setScreen("library")} onSource={(source, position) => { setBranch([]); setPractice(null); setRetry(false); openGame(source, position); }} />
       ) : screen === "library" ? (
         <div className="library-screen">
           <AccountLibrary
@@ -941,6 +927,7 @@ export default function App() {
                 <Board
                   language={language}
                   key={activeId}
+                  soundEnabled={prefs.sound}
                   fen={effectiveFen}
                   flipped={flipped}
                   onMove={(f, t, p) => void move(f, t, p)}
@@ -990,17 +977,15 @@ export default function App() {
                   </button>
                   <button
                     aria-label={t("Previous move")}
+                    data-step="previous"
                     onClick={() => navigate(ply - 1)}
                   >
                     <ChevronLeft size={23} />
                   </button>
-                  <span>
-                    {branch.length
-                      ? `${branchIndex}/${branch.length}`
-                      : `${ply}/${game.moves.length}`}
-                  </span>
+                  <MoveCounter key={activeId} position={branch.length ? branchIndex : ply} total={branch.length ? branch.length : game.moves.length} />
                   <button
                     aria-label={t("Next move")}
+                    data-step="next"
                     onClick={() => navigate(ply + 1)}
                   >
                     <ChevronRight size={23} />
@@ -1649,7 +1634,12 @@ function MoveList({
 }) {
   const { t } = useLanguage();
   const active = useRef<HTMLButtonElement | null>(null);
-  useEffect(() => {
+  const indicator = useRef<HTMLSpanElement | null>(null);
+  const selectionAnimation = useRef<Animation | null>(null);
+  const selectionPosition = useRef<{ x: number; y: number } | null>(null);
+  const selectionStart = useRef<string | null>(null);
+  const reduced = useReducedMotion();
+  useLayoutEffect(() => {
     const button = active.current;
     const scroll = button?.closest(".moves-scroll");
     if (button && scroll) {
@@ -1664,7 +1654,45 @@ function MoveList({
       )
         scroll.scrollTop = target - 60;
     }
-  }, [ply]);
+    const marker = indicator.current;
+    if (!marker) return;
+    const update = (animate: boolean) => {
+      const start = selectionStart.current ?? getComputedStyle(marker).transform;
+      selectionStart.current = null;
+      selectionAnimation.current?.cancel();
+      if (!button || !scroll) {
+        marker.style.visibility = 'hidden';
+        marker.parentElement?.classList.remove('motion-ready');
+        selectionPosition.current = null;
+        return;
+      }
+      const box = button.getBoundingClientRect(), container = scroll.getBoundingClientRect();
+      const x = box.left - container.left + scroll.scrollLeft, y = box.top - container.top + scroll.scrollTop;
+      const previous = selectionPosition.current;
+      marker.style.width = `${box.width}px`;
+      marker.style.height = `${box.height}px`;
+      marker.style.transform = `translate(${x}px,${y}px)`;
+      marker.style.visibility = 'visible';
+      marker.style.opacity = button.classList.contains('dimmed') ? '.25' : '1';
+      scroll.classList.add('motion-ready');
+      if (animate && !reduced && previous && (previous.x !== x || previous.y !== y)) {
+        const nearby = Math.abs(previous.y - y) <= box.height * 3;
+        selectionAnimation.current = marker.animate(nearby ? [
+          { transform: start }, { transform: `translate(${x}px,${y}px)` },
+        ] : [{ opacity: .3 }, { opacity: 1 }], { duration: 210, easing: 'cubic-bezier(.2,.75,.25,1)' });
+      }
+      selectionPosition.current = { x, y };
+    };
+    update(true);
+    let width = scroll?.clientWidth, height = scroll?.clientHeight;
+    const resize = new ResizeObserver(() => {
+      if (scroll?.clientWidth === width && scroll?.clientHeight === height) return;
+      width = scroll?.clientWidth; height = scroll?.clientHeight;
+      update(false);
+    });
+    if (scroll) resize.observe(scroll);
+    return () => { resize.disconnect(); selectionStart.current = getComputedStyle(marker).transform; selectionAnimation.current?.cancel(); };
+  }, [ply, game.id, reduced, filter]);
   return (
     <div className="move-list">
       <div className="section-heading">
@@ -1687,6 +1715,7 @@ function MoveList({
                   key={n}
                   ref={ply === n + 1 ? active : undefined}
                   className={`${ply === n + 1 ? "active-move" : ""} ${filter !== "all" && r?.label !== filter ? "dimmed" : ""}`}
+                  aria-current={ply === n + 1 ? 'step' : undefined}
                   onClick={() => onSelect(n + 1)}
                 >
                   <span>{game.moves[n]}</span>
@@ -1696,6 +1725,7 @@ function MoveList({
             })}
           </div>
         ))}
+        <span className="move-selection" ref={indicator} aria-hidden="true" />
       </div>
     </div>
   );

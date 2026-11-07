@@ -1,0 +1,14 @@
+:root {
+  --app-safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --app-safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --app-safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --app-safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+}
+body { padding: var(--app-safe-top) var(--app-safe-right) var(--app-safe-bottom) var(--app-safe-left); }
+body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: var(--app-safe-top); background: var(--bg); pointer-events: none; z-index: 101; }
+.app-header { top: var(--app-safe-top); }
+html { scroll-padding-top: calc(var(--app-safe-top) + var(--app-header-height, 68px) + 12px); }
+.modal-backdrop { inset: var(--app-safe-top) var(--app-safe-right) var(--app-safe-bottom) var(--app-safe-left); }
+.modal { max-height: min(90svh, calc(100svh - var(--app-safe-top) - var(--app-safe-bottom) - 48px)); }
+.toast { bottom: calc(var(--space-5) + var(--app-safe-bottom)); max-width: calc(100% - var(--app-safe-left) - var(--app-safe-right) - 32px); }
+@media (min-width: 781px) { .review-column { top: calc(var(--app-safe-top) + var(--app-header-height, 68px) + var(--space-4)); } }

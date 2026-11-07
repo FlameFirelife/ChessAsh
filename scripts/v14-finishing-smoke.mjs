@@ -1,0 +1,51 @@
+import { _electron as electron } from 'playwright';
+import { createServer } from 'node:http';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+
+const requests = [];
+const server = createServer(async (req, res) => {
+  let body = ''; for await (const chunk of req) body += chunk;
+  requests.push(JSON.parse(body));
+  res.setHeader('Content-Type', 'application/x-ndjson');
+  res.write(JSON.stringify({ message: { content: '**Develop your pieces.**\n\n- Control the centre\n- Prepare castling\n\n' } }) + '\n');
+  setTimeout(() => res.end(JSON.stringify({ message: { content: '```uci\ne2e4 e7e5\n```\n\n<script>alert(1)</script>\n\n![tracking](https://example.com/tracker.png)' }, done: true }) + '\n'), 500);
+});
+await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const endpoint = `http://127.0.0.1:${server.address().port}`;
+const app = await electron.launch({ args: ['.'], env: { ...process.env, CHESSASH_TEST: '1', CHESSASH_TEST_MAXIMIZE: '1', CHESSASH_TEST_DATA: path.resolve('work/qa/v14-finishing-' + Date.now()) } });
+const checks = [], errors = [];
+try {
+  const page = await app.firstWindow(); page.setDefaultTimeout(20000); page.on('pageerror', e => errors.push(e.message));
+  const windowState = await app.evaluate(({ BrowserWindow, app }) => { const window = BrowserWindow.getAllWindows()[0]; window.webContents.setBackgroundThrottling(false); return { maximized: window.isMaximized(), fullscreen: window.isFullScreen(), version: app.getVersion() }; });
+  assert.equal(windowState.maximized, true); assert.equal(windowState.fullscreen, false); assert.equal(windowState.version, '1.4.0');
+  checks.push('Windows starts maximized, with normal window chrome');
+  await page.evaluate(async endpoint => { localStorage.setItem('chessash:language', 'en'); await window.chessash.tutorSaveSettings({ mode: 'ollama', endpoint, model: 'local-fixture' }); }, endpoint);
+  await page.reload();
+  await page.getByRole('button', { name: 'Explore a sample', exact: true }).click();
+  await page.getByRole('button', { name: 'First move', exact: true }).click();
+  await page.getByRole('tab', { name: 'Tutor', exact: true }).click();
+  await page.getByLabel('Ask the tutor', { exact: true }).fill('What should I do?');
+  await page.getByRole('button', { name: 'Ask tutor', exact: true }).click();
+  await page.locator('.chat-assistant').waitFor({ timeout: 90000 });
+  assert.equal(await page.locator('.chat-assistant strong').getByText('Develop your pieces.', { exact: true }).count(), 1);
+  assert.equal(await page.locator('.chat-assistant li').count(), 2);
+  assert.equal(await page.getByRole('button', { name: 'Preview e4 e5', exact: true }).count(), 1);
+  assert.equal(await page.locator('.chat-assistant img, .chat-assistant script').count(), 0);
+  assert.ok(requests[0].messages[0].content.includes('White\'s perspective'));
+  assert.equal(requests[0].messages[1].role, 'user');
+  checks.push('Real engine-grounded tutor request uses system instructions plus separate position data; formatted reply and legal preview render safely');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => { const s = document.documentElement.style; s.setProperty('--safe-area-inset-top', '32px'); s.setProperty('--safe-area-inset-left', '12px'); s.setProperty('--safe-area-inset-right', '8px'); s.setProperty('--safe-area-inset-bottom', '24px'); window.scrollTo(0, 500); });
+  const header = await page.locator('.app-header').boundingBox(); assert.ok(header.y >= 32);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const modal = await page.getByRole('dialog', { name: 'Settings', exact: true }).boundingBox();
+  assert.ok(modal.y >= 32 && modal.y + modal.height <= 844 - 24 + 1);
+  checks.push('Simulated top/side/bottom insets keep sticky header and dialog clear, with no phone overflow');
+  assert.deepEqual(errors, []);
+  await mkdir('verification', { recursive: true });
+  await writeFile('verification/v14-finishing-results.json', JSON.stringify({ passed: true, checks, windowState, errors, limitation: 'Isolated Electron, local model fixture and simulated CSS insets; not physical Android verification or a live external model evaluation.' }, null, 2));
+  console.log('V1.4 finishing checks passed.');
+} finally { await app.close(); await new Promise(resolve => server.close(resolve)); }

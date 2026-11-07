@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Chess } from "chess.js";
 import type { Square } from "chess.js";
 import type { Label } from "../core";
 import QualityIcon from "./QualityIcon";
+import BoardEffects from './BoardEffects';
 import { initialBoardMotion, nextBoardMotion } from "../core/boardMotion";
 import "../board-motion.css";
+import { playMoveSound, prepareMoveSound, stopMoveSounds } from '../audio/moveSound';
 
 export default function Board({
   fen,
@@ -18,6 +20,7 @@ export default function Board({
   quality,
   disabled = false,
   language = "en",
+  soundEnabled = false,
 }: {
   fen: string;
   flipped: boolean;
@@ -30,6 +33,7 @@ export default function Board({
   quality?: { square: string; label: Label; name: string; key: string };
   disabled?: boolean;
   language?: "en" | "it";
+  soundEnabled?: boolean;
 }) {
   const [selection, setSelection] = useState<{ fen: string; square: string } | null>(null);
   const [promotionChoice, setPromotionChoice] = useState<{ fen: string; from: string; to: string } | null>(null);
@@ -67,6 +71,94 @@ export default function Board({
   const names = language === "it" ? { p: "pedone", n: "cavallo", b: "alfiere", r: "torre", q: "donna", k: "re" } : { p: "pawn", n: "knight", b: "bishop", r: "rook", q: "queen", k: "king" };
   const files = flipped ? "hgfedcba" : "abcdefgh";
   const ranks = flipped ? "12345678" : "87654321";
+  const pieceNodes = useRef(new Map<number, HTMLImageElement>());
+  const previousSoundFen = useRef(fen);
+  useEffect(() => {
+    if (!soundEnabled) { stopMoveSounds(); return; }
+    const unlock = () => prepareMoveSound();
+    window.addEventListener('pointerdown', unlock, true);
+    window.addEventListener('keydown', unlock, true);
+    return () => {
+      window.removeEventListener('pointerdown', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+      stopMoveSounds();
+    };
+  }, [soundEnabled]);
+  useEffect(() => {
+    const changed = previousSoundFen.current !== fen;
+    previousSoundFen.current = fen;
+    if (soundEnabled && changed && pieces.moving.length) playMoveSound();
+  }, [fen, soundEnabled, pieces.moving.length]);
+  const animations = useRef(new Map<number, Animation>());
+  const trailLayer = useRef<HTMLDivElement>(null);
+  const trailAnimations = useRef<Animation[]>([]);
+  const previousPlacement = useRef<{ fen: string; flipped: boolean; positions: Map<number, string>; lastAt: number | null }>({ fen, flipped, positions: new Map(), lastAt: null });
+  useLayoutEffect(() => {
+    const reduced = document.documentElement.dataset.motion === 'reduced' || matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const previous = previousPlacement.current;
+    const now = performance.now();
+    const positionChanged = previous.fen !== fen;
+    const interval = previous.lastAt === null ? Infinity : now - previous.lastAt;
+    const rapid = positionChanged && interval < 210 && previous.flipped === flipped;
+    const duration = rapid ? Math.max(150, Math.min(230, interval + 75)) : 330;
+    for (const animation of trailAnimations.current) animation.cancel();
+    trailAnimations.current = [];
+    trailLayer.current?.replaceChildren();
+    let ghosts = 0;
+    const positions = new Map<number, string>();
+    for (const piece of pieces.views) {
+      const target = `translate(${files.indexOf(piece.sq[0]) * 100}%,${ranks.indexOf(piece.sq[1]) * 100}%)`;
+      positions.set(piece.id, target);
+      const node = pieceNodes.current.get(piece.id), old = previous.positions.get(piece.id);
+      if (!node || !old || old === target) continue;
+      const running = animations.current.get(piece.id);
+      const start = running?.playState === 'running' && running.effect instanceof KeyframeEffect && running.effect.target === node ? getComputedStyle(node).transform : old;
+      running?.cancel();
+      if (reduced || previous.flipped !== flipped) continue;
+      if (rapid && trailLayer.current && ghosts < 12) {
+        for (let index = 0; index < 2; index++) {
+          const ghost = document.createElement('img');
+          ghost.src = node.src;
+          ghost.alt = '';
+          ghost.draggable = false;
+          ghost.className = 'piece-speed-ghost';
+          ghost.style.transform = start;
+          trailLayer.current.append(ghost);
+          const trail = ghost.animate([
+            { transform: start, opacity: .16 - index * .045, scale: '1.025' },
+            { transform: target, opacity: 0, scale: '1' },
+          ], { duration: duration + 35 + index * 25, easing: 'cubic-bezier(.4,0,.6,1)' });
+          trail.onfinish = () => ghost.remove();
+          trailAnimations.current.push(trail);
+          ghosts++;
+        }
+      }
+      const animation = node.animate([
+        { transform: start, scale: '1', filter: rapid ? 'blur(.7px)' : 'blur(0px)' },
+        { scale: '1.035', filter: rapid ? 'blur(.25px)' : 'blur(0px)', offset: .7 },
+        { transform: target, scale: '1', filter: 'blur(0px)' },
+      ], { duration, easing: 'cubic-bezier(.22,.7,.2,1)' });
+      animations.current.set(piece.id, animation);
+      animation.onfinish = () => { if (animations.current.get(piece.id) === animation) animations.current.delete(piece.id); };
+    }
+    for (const [id, animation] of animations.current) if (!positions.has(id)) { animation.cancel(); animations.current.delete(id); }
+    previousPlacement.current = { fen, flipped, positions, lastAt: positionChanged ? now : previous.flipped !== flipped ? null : previous.lastAt };
+  }, [fen, flipped]);
+  useEffect(() => {
+    const media = matchMedia('(prefers-reduced-motion: reduce)');
+    const clear = () => {
+      for (const animation of animations.current.values()) animation.cancel();
+      animations.current.clear();
+      for (const animation of trailAnimations.current) animation.cancel();
+      trailAnimations.current = [];
+      trailLayer.current?.replaceChildren();
+    };
+    const stop = () => { if (media.matches || document.documentElement.dataset.motion === 'reduced') clear(); };
+    const observer = new MutationObserver(stop);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-motion'] });
+    media.addEventListener('change', stop);
+    return () => { observer.disconnect(); media.removeEventListener('change', stop); clear(); };
+  }, []);
   const legal = selected
     ? chess.moves({ square: selected as Square, verbose: true })
     : [];
@@ -165,6 +257,7 @@ export default function Board({
           </div>
         )}
         <div className="piece-layer" aria-hidden="true">
+          <div className="piece-speed-trails" ref={trailLayer} />
           {pieces.captured.map((p) => (
             <img
               draggable="false"
@@ -187,6 +280,7 @@ export default function Board({
               draggable="false"
               className={`moving-piece ${pieces.moving.includes(p.id) ? "piece-in-motion" : ""} ${selected === p.sq ? "piece-selected" : ""}`}
               data-piece-id={p.id}
+              ref={node => { if (node) pieceNodes.current.set(p.id, node); else pieceNodes.current.delete(p.id); }}
               data-square={p.sq}
               key={p.id}
               src={
@@ -202,9 +296,10 @@ export default function Board({
             />
           ))}
         </div>
+        <BoardEffects chess={chess} fen={fen} flipped={flipped} quality={quality} language={language} movingSquares={pieces.views.filter(p => pieces.moving.includes(p.id)).map(p => p.sq)} />
         {quality && (
           <div
-            key={fen + ":" + quality.square}
+            key={quality.key + ":" + quality.label}
             className={`board-quality quality-${quality.label}`}
             role="img"
             aria-label={`${quality.name} ${language === "it" ? "in" : "on"} ${quality.square}`}

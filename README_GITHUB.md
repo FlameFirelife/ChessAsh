@@ -2,7 +2,7 @@
 
 Free post-game chess analysis for Windows and Android. Import your finished Chess.com games or open a PGN, review the turning points and try a better move.
 
-Stockfish runs on your device. The Windows app also uses [Foxash](https://github.com/FlameFirelife/foxash/) for its review rules and can connect to Ollama or an API tutor you choose.
+Stockfish runs on your device. Windows opens maximized. The Android interface respects system-bar and display-cutout spacing. The Windows app also uses [Foxash](https://github.com/FlameFirelife/foxash/) for its review rules and can connect to Ollama or an API tutor you choose.
 
 Get the Windows installer or Android APK from [Releases](https://github.com/FlameFirelife/ChessAsh/releases/latest).
 
@@ -19,7 +19,7 @@ Get the Windows installer or Android APK from [Releases](https://github.com/Flam
 - Saves games, reviews and notes locally. Saved reviews work offline.
 - Offers optional Windows tutoring through local Ollama or a compatible API provider. API charges may apply.
 
-The review screen keeps explanations above the board. The main header stays visible while scrolling, and the desktop board uses the available width. Move feedback and piece movement animate, with a reduced-motion setting. Detailed notation, the advantage graph and advanced analysis controls are optional.
+The review screen keeps explanations above the board. The main header stays visible while scrolling, and the desktop board uses the available width. Piece movement, captures and move feedback animate, with distinct effects for check, stalemate and checkmate and a brief spotlight for sound sacrifices. A reduced-motion setting is available. Enable Move sounds in Settings for a soft wooden tap when navigating or playing moves, including training. Detailed notation, the advantage graph and advanced analysis controls are optional.
 
 Training offers focused practice or short mixed sessions, with exercises for undefended pieces, forks, back-rank mates and other missed opportunities. See the [training guide](TRAINING_GUIDE.md) to get started.
 
@@ -61,7 +61,7 @@ The app's scores and move labels are its own and will differ from Chess.com. Dee
 
 Training uses completed reviews from your side of the game. Practice history stays on your device and is kept separate from saved games and reviews. It does not require an AI model or API key.
 
-Ollama can run locally. API tutoring sends game context, engine findings and recent chat to the provider you select. There is no silent switch to a cloud model. Model explanations can still be wrong.
+Tutor replies support Markdown, with engine-backed coaching and playable legal continuations. Ollama can run locally. API tutoring sends game context, engine findings and recent chat to the provider you select. There is no silent switch to a cloud model. Model explanations can still be wrong.
 
 Windows uses Electron and Android uses Capacitor. Both render their interface with web technology inside the app. Windows downloads are unsigned; source builds support a configured trusted signing certificate. Android release APKs are signed. See [SIGNING.md](SIGNING.md) for installation warnings and signing setup.
 

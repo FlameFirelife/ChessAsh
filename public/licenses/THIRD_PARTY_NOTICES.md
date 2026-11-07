@@ -1,6 +1,6 @@
 # Third-party notices
 
-ChessAsh is an independent companion by FlameDev, not affiliated with Chess.com or Lichess. It uses the documented public Chess.com API for finished games. No Chess.com artwork, sounds, logos or proprietary review scores are included.
+ChessAsh is an independent companion by FlameDev Studios, not affiliated with Chess.com or Lichess. It uses the documented public Chess.com API for finished games. No Chess.com artwork, sounds, logos or proprietary review scores are included.
 
 ## Stockfish.js
 
@@ -10,7 +10,7 @@ Copyright the Stockfish contributors and Stockfish.js contributors. GPL version 
 
 ## Foxash
 
-Foxash 1.4.0 by FlameDev Studios, MIT licence. Repository: [github.com/FlameFirelife/foxash](https://github.com/FlameFirelife/foxash/). Windows bundles the existing release executable and source archive from that project; licence is included in `resources/foxash`. The `.foxash` review and training programs are ChessAsh source. Original Foxash source was not modified.
+Foxash 1.4.0 by FlameDev Studios, MIT licence. Repository: [github.com/FlameFirelife/foxash](https://github.com/FlameFirelife/foxash/). Windows bundles the existing release executable and source archive from that project; licence is included in `resources/foxash`. The `.foxash` review and training programs are ChessAsh source.
 
 ## Chess pieces
 
@@ -29,3 +29,7 @@ Host Grotesk and Atkinson Hyperlegible Mono, under the SIL Open Font License 1.1
 - Electron: OpenJS Foundation and contributors, MIT; Chromium and other embedded component notices ship with the Electron distribution. https://github.com/electron/electron
 
 Build tools include Vite, TypeScript, electron-builder, Vitest and Playwright. The lockfile pins resolved versions. Dependency licence texts are included in source node_modules after installation; release preparation generates a bundled dependency notices file. ChessAsh application source is distributed under GPL-3.0-or-later to make its redistribution terms clear alongside its chess assets and engine.
+
+## Markdown rendering
+
+react-markdown and remark-gfm by the unified collective and contributors are MIT-licensed. Their transitive runtime dependency licences are included in public/licenses/DEPENDENCIES.txt and public/licenses/dependencies/. Source: https://github.com/remarkjs/react-markdown and https://github.com/remarkjs/remark-gfm .

@@ -104,6 +104,7 @@ app.whenReady().then(() => {
     autoHideMenuBar: true, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true }
   });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  if (process.env.CHESSASH_TEST !== '1' || process.env.CHESSASH_TEST_MAXIMIZE === '1') mainWindow.maximize();
   mainWindow.webContents.on('will-navigate', (event, url) => { if (!url.startsWith('file:') && !url.startsWith('http://127.0.0.1:5173/')) event.preventDefault(); });
   const devUrl = process.env.CHESSASH_DEV_URL;
   if (devUrl && /^http:\/\/127\.0\.0\.1:\d+\/$/.test(devUrl)) mainWindow.loadURL(devUrl);

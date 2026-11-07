@@ -8,7 +8,7 @@ The queue favours repeated groups, previously missed cards and larger evaluation
 
 Mixed sessions keep the first priority card, then balance pattern and source-game repetition across the remaining due cards. Focused sessions keep the selected pattern. Failed attempts show the actual engine reply in piece-and-square language, with up to four validated continuation moves playable on the board and a return to the attempted position.
 
-On Windows, the bundled `rules/training.foxash` script decides group/focus, priority and repeat intervals from validated facts and practice history. The UI waits for those decisions and uses the focus for its localized coaching prompt. It shows a retry option if the policy fails. Android uses the matching shared defaults in `src/core/trainingPolicy.ts`; no Foxash process runs on Android. Both policies are tested for parity. The original `Desktop/foxash` project and bundled runtime are preserved.
+On Windows, the bundled `rules/training.foxash` script decides group/focus, priority and repeat intervals from validated facts and practice history. The UI waits for those decisions and uses the focus for its localized coaching prompt. It shows a retry option if the policy fails. Android uses the matching shared defaults in `src/core/trainingPolicy.ts`; no Foxash process runs on Android. Both policies are tested for parity. 
 
 Solved cards return after 1, 3, 7, 14 and then 30 days as consecutive successes increase. Missed or revealed cards return after ten minutes. A failed card can also be retried immediately within the exercise. The interface shows how many positions in each group were solved on their most recent attempt.
 

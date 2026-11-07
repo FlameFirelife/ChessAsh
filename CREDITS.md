@@ -9,3 +9,5 @@ Chess analysis uses Stockfish.js and the Stockfish contributors' engine. Chess l
 Full third-party sources and licences are in THIRD_PARTY_NOTICES.md and the bundled licence files. ChessAsh is independent and is not affiliated with Chess.com or Lichess.
 
 The super-king coach SVG is original ChessAsh vector artwork in public/coach/super-king.svg.
+
+Markdown rendering uses react-markdown, remark-gfm and their contributors’ unified/remark libraries.

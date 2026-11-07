@@ -1,0 +1,85 @@
+import { _electron as electron } from 'playwright';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+
+const app = await electron.launch({ args: ['.'], env: { ...process.env, CHESSASH_TEST: '1', CHESSASH_TEST_DATA: path.resolve('work/qa/button-feedback-' + Date.now()) } });
+const checks = [], errors = [];
+try {
+  const page = await app.firstWindow();
+  page.setDefaultTimeout(10000);
+  page.on('pageerror', error => errors.push(error.message));
+  await app.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]; window.webContents.setBackgroundThrottling(false); window.showInactive(); });
+  await page.evaluate(() => { localStorage.setItem('chessash:language', 'en'); localStorage.setItem('chessash:prefs', JSON.stringify({ reduced: false, sound: false })); });
+  await page.reload();
+  await page.getByRole('button', { name: 'Import game', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Paste PGN' }).fill('[Event "Button check"]\n\n1. e4 e5 2. Nf3 Nc6 *');
+  await page.getByRole('button', { name: 'Import PGN', exact: true }).click();
+  const next = page.getByRole('button', { name: 'Next move', exact: true });
+  await next.scrollIntoViewIfNeeded();
+  const board = await page.locator('.chessboard').boundingBox();
+  const button = await next.boundingBox();
+  await page.mouse.move(button.x + button.width / 2, button.y + button.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(100);
+  assert.equal(await next.getAttribute('data-press'), 'held');
+  const pressed = await next.locator('svg').evaluate(node => Number(getComputedStyle(node).scale));
+  assert.ok(pressed <= .85);
+  assert.equal(await page.locator('.move-counter').innerText(), '0/4');
+  await page.mouse.up();
+  assert.equal(await next.getAttribute('data-press'), 'released');
+  assert.equal(await page.locator('.move-counter').innerText(), '1/4');
+  await page.waitForTimeout(450);
+  assert.equal(await next.getAttribute('data-press'), null);
+  assert.deepEqual(await next.boundingBox(), button);
+  assert.deepEqual(await page.locator('.chessboard').boundingBox(), board);
+  checks.push('pointer press compresses icon, release springs, action runs once, geometry remains fixed, cleanup completes');
+  await next.focus();
+  await page.keyboard.down(' ');
+  assert.equal(await next.getAttribute('data-press'), 'held');
+  await page.keyboard.up(' ');
+  assert.equal(await page.locator('.move-counter').innerText(), '2/4');
+  assert.equal(await next.getAttribute('data-press'), 'released');
+  checks.push('keyboard Space uses same tactile feedback and native activation');
+  await page.mouse.move(button.x + button.width / 2, button.y + button.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(button.x - 30, button.y - 30);
+  await page.mouse.up();
+  assert.equal(await next.getAttribute('data-press'), null);
+  assert.equal(await page.locator('.move-counter').innerText(), '2/4');
+  checks.push('dragging away cancels feedback and does not activate');
+  await page.evaluate(() => {
+    const button = document.querySelector('button[aria-label="Next move"]');
+    button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, isPrimary: true, pointerId: 99, clientX: button.getBoundingClientRect().x + 10, clientY: button.getBoundingClientRect().y + 10 }));
+    button.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: 99 }));
+  });
+  assert.equal(await next.getAttribute('data-press'), null);
+  await page.locator('button.square').first().click();
+  assert.equal(await page.locator('button.square.ui-feedback').count(), 0);
+  checks.push('pointer cancellation clears state; chess squares retain their own feedback');
+  for (const mode of ['app', 'system']) {
+    if (mode === 'app') await page.evaluate(() => document.documentElement.dataset.motion = 'reduced');
+    else { await page.evaluate(() => document.documentElement.dataset.motion = 'normal'); await page.emulateMedia({ reducedMotion: 'reduce' }); }
+    await page.waitForTimeout(30);
+    await next.click();
+    assert.equal(await next.getAttribute('data-press'), null);
+  }
+  checks.push('app/system reduced motion disable press animations');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.waitForTimeout(30);
+  const settings = page.getByRole('button', { name: 'Settings', exact: true });
+  await settings.focus();
+  await page.keyboard.down('Enter');
+  assert.equal(await page.getByRole('dialog', { name: 'Settings', exact: true }).count(), 1);
+  await page.keyboard.up('Enter');
+  await page.waitForTimeout(430);
+  assert.equal(await settings.getAttribute('data-press'), null);
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  checks.push('Enter opens dialog once and cleans feedback after focus moves');
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await mkdir('verification', { recursive: true });
+  assert.deepEqual(errors, []);
+  await writeFile('verification/button-feedback-results.json', JSON.stringify({ passed: true, checks, pressed, errors, limitation: 'Visible isolated Electron with real mouse/keyboard and synthetic cancellation; physical touch/Android unverified.' }, null, 2));
+  console.log('Button feedback checks passed:', checks.length);
+} finally { await app.close(); }

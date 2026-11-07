@@ -121,6 +121,17 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
+.tutor-panel .tutor-markdown { white-space: normal; min-width: 0; }
+.tutor-markdown > :first-child { margin-top: 0; }
+.tutor-markdown > :last-child { margin-bottom: 0; }
+.tutor-markdown p, .tutor-markdown ul, .tutor-markdown ol { margin-block: .6em; }
+.tutor-markdown li + li { margin-top: .25em; }
+.tutor-markdown strong { color: var(--ink); }
+.tutor-markdown pre { overflow-x: auto; padding: 10px; border-radius: 8px; background: var(--deep); white-space: pre; }
+.tutor-markdown code { font-family: var(--font-mono); font-size: .9em; }
+.tutor-markdown table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+.tutor-markdown th, .tutor-markdown td { padding: 5px 8px; border: 1px solid var(--line); }
+.tutor-markdown blockquote { margin-inline: 0; padding-left: 12px; border-left: 2px solid var(--line-strong); }
 .tutor-panel > form {
   display: flex;
   flex-direction: column;

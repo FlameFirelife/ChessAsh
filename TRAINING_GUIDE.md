@@ -42,6 +42,6 @@ Solving a position after revealing its answer remains assisted. It does not coun
 
 Practice history is saved locally for the selected main account. PGNs with an explicitly selected side use a separate practice profile when no main account is configured. Changing the main account changes the active practice history.
 
-The interface and coaching support English and Italian. Reduced motion also applies to training. Standard training runs locally and needs no AI model or API key.
+The interface and coaching support English and Italian. Reduced motion also applies to training. Enable Move sounds in Settings for soft wooden taps during moves and reply playback. Standard training runs locally and needs no AI model or API key.
 
 Progress over time shows independent solves by pattern across completed sessions. It compares recent positions with earlier ones and shows a trend after two complete groups of five positions across at least two sessions. Revealed answers do not count as independent solves. With fewer results, you see the recorded counts while more sessions accumulate.

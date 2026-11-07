@@ -1,0 +1,13 @@
+.move-controls .move-counter { overflow: hidden; font-variant-numeric: tabular-nums; }
+.move-counter-value { display: inline-block; color: var(--secondary); }
+.moves-scroll { position: relative; isolation: isolate; }
+.move-selection { position: absolute; top: 0; left: 0; z-index: 1; visibility: hidden; pointer-events: none; background: var(--accent-soft); border: 1px solid var(--line-strong); border-radius: 3px; }
+.move-pair button { position: relative; z-index: 2; }
+.moves-scroll.motion-ready .move-pair button.active-move { background: transparent; border-color: transparent; }
+.moves-scroll.motion-ready .move-pair button.active-move:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.speech-bubble .message-quality svg { animation: coach-icon-settle 360ms cubic-bezier(.16,.8,.24,1) both; }
+.key-moves > button { transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease; }
+.key-moves > button.selected-key { box-shadow: inset 0 -2px 0 var(--accent); }
+.move-controls button:not(.ui-feedback):active:not(:disabled) svg { scale: .91; }
+.move-controls button svg { transition: scale 100ms ease; }
+@keyframes coach-icon-settle { 0% { scale: .7; rotate: -12deg; opacity: .4; } 55% { scale: 1.12; rotate: 3deg; opacity: 1; } 100% { scale: 1; rotate: 0deg; opacity: 1; } }

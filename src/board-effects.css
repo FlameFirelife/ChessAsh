@@ -1,0 +1,59 @@
+.board-arrivals, .quality-effects, .position-effects { position: absolute; inset: 0; pointer-events: none; }
+.board-arrivals { z-index: 2; overflow: hidden; }
+.quality-effects { z-index: 7; overflow: hidden; border-radius: inherit; }
+.position-effects { z-index: 8; overflow: hidden; border-radius: inherit; --event-color: #f4b190; }
+.move-arrival, .quality-landing, .king-focus { position: absolute; width: 12.5%; height: 12.5%; translate: -50% -50%; }
+.move-arrival { border-radius: 50%; background: radial-gradient(ellipse, rgb(230 249 194 / 32%), transparent 68%); animation: arrival-settle 400ms ease-out both; }
+.quality-landing { --landing: var(--feedback); }
+.quality-landing i { position: absolute; inset: 8%; border: 2px solid var(--landing); border-radius: 30%; opacity: 0; animation: quality-wave 660ms cubic-bezier(.16,.8,.24,1) 180ms both; }
+.quality-landing i + i { animation-delay: 250ms; border-width: 1px; }
+.quality-best .quality-landing i, .quality-great .quality-landing i { border-radius: 20%; rotate: 45deg; }
+.quality-mistake .quality-landing i, .quality-blunder .quality-landing i { border-radius: 12%; animation-name: quality-inset; }
+.quality-inaccuracy .quality-landing i, .quality-miss .quality-landing i { border-style: dashed; }
+.quality-book .quality-landing i + i { display: none; }
+.sacrifice-landing i { --landing: #b3fff0; animation-duration: 1100ms; }
+.sacrifice-sequence { position: absolute; inset: 0; color: #d1fff5; isolation: isolate; animation: sacrifice-lifetime 1750ms linear both; }
+.sacrifice-vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgb(10 46 45 / 12%) 12%, rgb(6 20 24 / 72%) 100%); animation: sacrifice-light 1750ms ease both; }
+.sacrifice-orbit { position: absolute; width: 43%; aspect-ratio: 1; top: 50%; left: 50%; translate: -50% -50%; }
+.sacrifice-orbit i { position: absolute; inset: 0; border: 1px solid rgb(167 255 231 / 58%); border-radius: 50%; box-shadow: 0 0 24px rgb(88 244 204 / 15%), inset 0 0 24px rgb(88 244 204 / 8%); animation: sacrifice-ring 1300ms cubic-bezier(.16,.8,.24,1) 160ms both; }
+.sacrifice-orbit i + i { inset: 12%; border-style: dashed; border-color: rgb(193 255 242 / 32%); animation-delay: 240ms; }
+.sacrifice-sparks { position: absolute; inset: 0; }
+.sacrifice-sparks i { position: absolute; top: 50%; left: 50%; width: 3px; height: 12px; margin: -6px -1.5px; border-radius: 100%; background: #d9fff6; transform: rotate(var(--angle)) translateY(-36px); animation: sacrifice-spark 1000ms cubic-bezier(.16,.8,.24,1) calc(220ms + var(--delay)) both; }
+.sacrifice-title { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; text-shadow: 0 2px 16px #102d2b; animation: sacrifice-reveal 1750ms cubic-bezier(.16,.8,.24,1) both; }
+.sacrifice-emblem { position: relative; display: grid; place-items: center; width: clamp(64px, 17%, 110px); aspect-ratio: 1; border-radius: 28%; border: 1px solid rgb(216 255 245 / 80%); background: linear-gradient(145deg, #75dcc1, #1b706a); color: #ecfff9; box-shadow: 0 0 0 5px rgb(172 255 230 / 9%), 0 12px 45px rgb(0 0 0 / 30%); }
+.sacrifice-emblem svg { position: absolute; top: -14%; right: -16%; width: 34%; height: 34%; filter: drop-shadow(0 0 6px #72f4d3); }
+.sacrifice-emblem b { font-size: clamp(32px, 7vw, 62px); letter-spacing: -.1em; padding-right: .12em; line-height: 1; font-weight: 800; }
+.sacrifice-title strong { font-size: clamp(17px, 3vw, 29px); font-weight: 700; letter-spacing: -.035em; color: #effff9; }
+.sacrifice-rule { width: 48px; height: 2px; background: linear-gradient(90deg, transparent, #b4ffe8, transparent); }
+.position-checkmate { --event-color: #f5d58c; }
+.position-stalemate { --event-color: #d9e9f3; }
+.king-focus { border-radius: 22%; box-shadow: inset 0 0 0 2px var(--event-color); background: radial-gradient(ellipse, transparent 30%, color-mix(in srgb, var(--event-color) 30%, transparent)); animation: king-arrival 500ms ease-out both; }
+.king-focus i { position: absolute; inset: 0; border: 2px solid var(--event-color); border-radius: inherit; animation: king-wave 800ms cubic-bezier(.16,.8,.24,1) 160ms both; }
+.king-focus i + i { animation-delay: 270ms; border-width: 1px; }
+.position-stalemate .king-focus { border-radius: 50%; box-shadow: none; }
+.position-stalemate .king-focus i { border-style: dashed; animation-name: stalemate-wave; }
+.position-announcement { position: absolute; top: 3%; left: 50%; display: flex; align-items: center; gap: 9px; padding: 7px 14px 7px 9px; border-radius: 30px; white-space: nowrap; color: var(--event-color); background: #202b27; border: 1px solid color-mix(in srgb, var(--event-color) 48%, transparent); box-shadow: 0 4px 18px rgb(0 0 0 / 22%); font-weight: 650; font-size: clamp(12px, 2vw, 16px); translate: -50% 0; animation: position-notice 1100ms cubic-bezier(.16,.8,.24,1) 240ms both; }
+.position-symbol { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; background: color-mix(in srgb, var(--event-color) 15%, transparent); font-size: 20px; }
+.position-check .position-announcement { animation-duration: 850ms; }
+@keyframes arrival-settle { 0%, 20% { opacity: 0; scale: .7; } 55% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: 1.2; } }
+@keyframes quality-wave { 0% { opacity: 0; scale: .65; } 20% { opacity: .8; } 100% { opacity: 0; scale: 1.4; } }
+@keyframes quality-inset { 0% { opacity: 0; scale: 1.2; } 25% { opacity: .75; } 100% { opacity: 0; scale: .85; } }
+@keyframes sacrifice-lifetime { 0%, 98% { visibility: visible; } 100% { visibility: hidden; } }
+@keyframes sacrifice-light { 0% { opacity: 0; } 18%, 64% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes sacrifice-ring { 0% { opacity: 0; scale: .5; rotate: -25deg; } 20% { opacity: 1; } 100% { opacity: 0; scale: 1.7; rotate: 15deg; } }
+@keyframes sacrifice-spark { 0% { opacity: 0; transform: rotate(var(--angle)) translateY(-36px) scaleY(.4); } 20% { opacity: .9; } 100% { opacity: 0; transform: rotate(var(--angle)) translateY(clamp(-160px, -23vw, -90px)) scaleY(.3); } }
+@keyframes sacrifice-reveal { 0%, 8% { opacity: 0; scale: .78; translate: 0 8px; } 27% { opacity: 1; scale: 1.035; translate: 0 0; } 38%, 70% { opacity: 1; scale: 1; translate: 0 0; } 100% { opacity: 0; scale: 1.025; translate: 0 -5px; } }
+@keyframes king-arrival { from { opacity: 0; scale: .88; } to { opacity: 1; scale: 1; } }
+@keyframes king-wave { 0% { opacity: .85; scale: .9; } 100% { opacity: 0; scale: 1.55; } }
+@keyframes stalemate-wave { 0% { opacity: 0; scale: 1.6; rotate: -35deg; } 30% { opacity: .8; } 100% { opacity: 0; scale: .95; rotate: 0deg; } }
+@keyframes position-notice { 0% { opacity: 0; transform: translateY(-6px) scale(.94); } 22%, 70% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-3px); visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .board-arrivals, .quality-effects, .king-focus i { display: none; }
+  .position-effects .king-focus { animation: none; }
+  .position-effects .position-announcement { animation: none; opacity: 1; }
+}
+html[data-motion="reduced"] .board-arrivals,
+html[data-motion="reduced"] .quality-effects,
+html[data-motion="reduced"] .king-focus i { display: none; }
+html[data-motion="reduced"] .position-effects .king-focus,
+html[data-motion="reduced"] .position-effects .position-announcement { animation: none; opacity: 1; }
