@@ -2,7 +2,8 @@ import { Chess } from 'chess.js';
 import { analyzePosition, ENGINE_VERSION } from './engine';
 import { classify, POLICY_VERSION, LABEL_INFO } from './policy';
 import { isBookMove } from './openings';
-import { playUci, variationSan } from './pgn';
+import { playUci } from './pgn';
+import { reviewCoaching } from './coaching';
 import type { AnalyzeOptions, EngineResult, MoveReview, Review, ReviewFacts } from './types';
 import type { Game } from './types';
 
@@ -75,41 +76,14 @@ export function continuationEvidence(fen: string, color: 'w' | 'b', moves: strin
   return capture ? `${capture}Explore ${line} to compare the replies.` : `The engine continuation is ${line}.`;
 }
 
-function explanationFor(game: Game, result: MoveReview, after: EngineResult): { explanation: string; hints: string[] } {
-  const fen = game.positions[result.ply - 1];
-  const afterFen = game.positions[result.ply];
-  const beforeBoard = new Chess(fen);
-  const played = beforeBoard.move(result.san || game.moves[result.ply - 1]);
-  const afterBoard = new Chess(afterFen);
-  const suggested = playUci(fen, result.best);
-  const lines = variationSan(fen, result.pv.slice(0, 5));
-  let detail = '';
-  if (afterBoard.isCheckmate()) detail = 'This finishes the game with checkmate.';
-  else if (afterBoard.isStalemate()) detail = 'This leaves the opponent with no legal move and no check: stalemate.';
-  else if (result.label === 'book') detail = 'This move follows a recognised opening sequence. The opening label is not a claim that it is forced or uniquely best.';
-  else if (result.label === 'sacrifice') detail = 'The engine’s continuation gives up material while retaining compensation. Explore the line before adopting the idea in another position.';
-  else if (result.label === 'great') detail = 'This is the engine’s preferred move, and its next candidate evaluates substantially worse at this depth.';
-  else if (result.label === 'best') detail = 'This matches the engine’s preferred move at the analysed depth.';
-  else if (result.label === 'excellent') detail = 'This keeps almost all of the value of the engine’s preferred continuation.';
-  else if (result.label === 'good') detail = 'This is playable, with a modest concession compared with the engine’s preferred continuation.';
-  else {
-    const newBoard = new Chess(afterFen);
-    detail += `The position loses about ${(Math.min(result.loss, 3000) / 100).toFixed(1)} pawns of engine evaluation compared with the preferred continuation.`;
-    if (result.loss >= 10000) detail = 'The engine finds a decisive change in the forced-mate evaluation. Explore the continuation to see the exact sequence.';
-    const evidence = continuationEvidence(afterFen, result.color, after.pv);
-    if (evidence) detail += ' ' + evidence;
-    const movedPiece = newBoard.get(played.to);
-    if (movedPiece && newBoard.isAttacked(played.to, played.color === 'w' ? 'b' : 'w')) {
-      detail += ` Your ${pieceName(played.piece)} on ${played.to} is attacked; compare captures before continuing.`;
-    }
-  }
-  const alternative = suggested && result.best !== result.move ? ` Consider ${suggested.san}${lines.length > 1 ? ': ' + lines.join(' ') : ''}.` : '';
+function explanationFor(game: Game, result: MoveReview, after: EngineResult, policyHint?: string): { explanation: string; hints: string[] } {
+  const coaching = reviewCoaching(game, { ...result, replyPv: after.pv });
   return {
-    explanation: detail + alternative,
+    explanation: [coaching.text, coaching.detail, coaching.best].filter(Boolean).join(' '),
     hints: [
-      'Look for checks, captures and threats before choosing a move.',
+      coaching.hint || policyHint || 'Look for checks, captures and threats before choosing a move.',
       result.best ? `Consider the piece on ${result.best.slice(0, 2)}.` : 'Inspect all legal replies.',
-      suggested ? `Try ${suggested.san}.` : 'There is no continuation from this terminal position.',
+      coaching.best,
     ],
   };
 }
@@ -147,8 +121,7 @@ export async function analyzeGame(game: Game, options: AnalyzeOptions = {}): Pro
     Object.assign(result, explanationFor(game, result, {
       fen: game.positions[result.ply], score: result.after, depth: result.depth, mate: result.mate,
       best: previousResult.replyPv?.[0] || next?.best || '', pv: previousResult.replyPv || next?.pv || [], lines: [],
-    }));
-    if (typeof decision !== 'string' && decision.hint) result.hints[0] = decision.hint;
+    }, typeof decision !== 'string' ? decision.hint : undefined));
     const grouped = groupForcedConsequence(game, result, results.slice(0, index));
     results[index] = grouped;
     options.onResult?.(grouped);
@@ -182,8 +155,7 @@ export async function analyzeGame(game: Game, options: AnalyzeOptions = {}): Pro
         explanation: '', hints: [], key: typeof decision === 'string' ? ['sacrifice', 'great', 'inaccuracy', 'mistake', 'blunder', 'miss'].includes(label) : decision.key,
         facts, mate: after.mate, replyPv: after.pv,
       };
-      Object.assign(result, explanationFor(game, result, after));
-      if (typeof decision !== 'string' && decision.hint) result.hints[0] = decision.hint;
+      Object.assign(result, explanationFor(game, result, after, typeof decision !== 'string' ? decision.hint : undefined));
       const grouped = groupForcedConsequence(game, result, results);
       results.push(grouped);
       options.onResult?.(grouped);

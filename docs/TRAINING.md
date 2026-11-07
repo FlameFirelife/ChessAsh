@@ -27,3 +27,5 @@ Both English and Italian are supported. No model, API key or server is used for 
 Verification: `npm test`, `npm run build` and `node scripts/v13-training-smoke.mjs`. The UI check uses hidden Electron with the real local engine, an isolated profile and a 390px viewport. It does not establish physical Android or installed-upgrade behaviour.
 
 `node scripts/v13-finishing-smoke.mjs` additionally closes and relaunches the actual Electron app with the same isolated profile, checks source-position navigation, restores an answered exercise without duplicate attempts and verifies persistent progress and Italian phone-layout labels.
+
+Failed-reply explanations share the tactical-cause inspector described in [EXPLANATIONS.md](EXPLANATIONS.md). The attempted move must replay to the actual reply-start position before its cause is used. Reasons are regenerated in the selected language, including restored sessions.

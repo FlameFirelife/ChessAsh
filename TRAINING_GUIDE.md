@@ -20,7 +20,7 @@ Practice this opens a session for one group. Depending on your reviewed games, g
 
 The board faces your side. Choose a legal move to improve on what happened in the game. Sound alternatives can be accepted even when they differ from the saved best move.
 
-If your move gives away an opportunity, the feedback explains a concrete opponent reply when the engine supplies one. Select Show opponent's reply to animate it. Continue the line follows more replies; Back to your move restores the position after your attempt.
+If your move gives away an opportunity, the feedback explains a concrete opponent reply when the engine supplies one. It can also explain the underlying problem, such as leaving a defender behind or opening a line toward the king. Select Show opponent's reply to animate it. Continue the line follows more replies; Back to your move restores the position after your attempt.
 
 Try again restores the exercise. Show solution plays the saved best move. Original game opens the source position's context, with more explanation after you solve or reveal it.
 

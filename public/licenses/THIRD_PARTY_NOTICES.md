@@ -14,7 +14,7 @@ Foxash 1.4.0 by FlameDev Studios, MIT licence. Repository: [github.com/FlameFire
 
 ## Chess pieces
 
-The current chess pieces are original rounded SVG artwork created for ChessAsh. Editable source: `scripts/create-pieces.mjs`. They ship under the ChessAsh GPL-3.0-or-later licence. They do not use Lichess or Chess.com piece artwork. The earlier cburnett evaluation set has been removed from the active assets.
+The current chess pieces are original rounded SVG artwork created for ChessAsh. Editable source: `scripts/create-pieces.mjs`. They ship under the ChessAsh GPL-3.0-or-later licence.
 
 ## Fonts
 

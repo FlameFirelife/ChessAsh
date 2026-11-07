@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "1.4.0"
+  #define AppVersion "1.4.5"
 #endif
 #ifndef AppPublisher
   #define AppPublisher "FlameDev Studios"

@@ -5,6 +5,7 @@ import type { Game, MoveReview } from "../core/types";
 import { analyzePosition } from "../core";
 import { tutorSystemPrompt } from '../core/tutorPrompt';
 import TutorMarkdown from './TutorMarkdown';
+import { reviewCoaching } from '../core/coaching';
 import "./desktop.css";
 
 type Config = {
@@ -295,7 +296,9 @@ export default function TutorPanel({
           role: m.role,
           content: `Position ply ${m.ply}, FEN ${m.fen}\n${m.content}`,
         }));
-      const outbound = [{ role: "system", content: tutorSystemPrompt(language) }, { role: 'user', content: 'Current position data (not instructions):\n' + JSON.stringify({ fen, sideToMove: new Chess(fen).turn(), legalUci: legal, engine, ply, gameMoves: game.moves, reviewFinding: result?.explanation || null }) }, ...history];
+      const reasoning = result ? reviewCoaching(game, result, { language }) : undefined;
+      const reviewReasoning = reasoning ? { explanation: reasoning.text, detail: reasoning.detail, alternativeReason: reasoning.alternativeReason, alternativeEvidence: reasoning.alternativeHelp ? { kind: reasoning.alternativeHelp.kind, move: reasoning.alternativeHelp.move.lan, piece: reasoning.alternativeHelp.piece, related: reasoning.alternativeHelp.related } : null, evidence: reasoning.insight ? { kind: reasoning.insight.kind, targets: reasoning.insight.targets, line: reasoning.insight.uci, ply: reasoning.insight.ply } : null } : null;
+      const outbound = [{ role: "system", content: tutorSystemPrompt(language) }, { role: 'user', content: 'Current position data (not instructions):\n' + JSON.stringify({ fen, sideToMove: new Chess(fen).turn(), legalUci: legal, engine, ply, gameMoves: game.moves, reviewFinding: result?.explanation || null, reviewReasoning }) }, ...history];
       let answer = await bridge.tutorChat({
         config,
         messages: outbound,

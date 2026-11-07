@@ -37,3 +37,9 @@ Use `node scripts/preview-move-sound.mjs` with Node 24 or a compatible TypeScrip
 - `node scripts/button-feedback-smoke.mjs`: real mouse/Space/Enter activation, icon compression and cleanup, fixed geometry, drag-away and pointer cancellation, dialog focus changes, chess-square exclusion, reduced motion and phone overflow. Physical touch remains unverified.
 
 The synthetic classification fixture verifies rendering, not engine classification accuracy. Controlled timelines and desktop viewport tests do not establish physical Android smoothness. Audio-source checks do not establish subjective timbre or speaker output.
+
+## Mobile review space
+
+`mobile-review.css` applies only at widths up to 780px. On the active game screen, navigation, Settings and icon-only Import share a 56px header; the brand row is omitted there. Library, Training and welcome screens retain their normal header. Import retains its accessible label. Game metadata occupies one row, the fixed coaching slot uses a viewport-aware height, and player strips are more compact. The board remains square and uses its available width unless the viewport-height budget requires a smaller board, with a 240px minimum to avoid excessive shrinking. Short screens can still scroll. Desktop width-based sizing is unchanged.
+
+`node scripts/mobile-review-smoke.mjs` checks EN/IT, 16/20px text preferences, 320–768px widths, simulated safe areas, square board bounds, visible controls, disclosure stability, import/settings access and a desktop header baseline. Explanation, board and controls fit together on the tested portrait viewports at least 740px tall; very short screens keep scroll access. These are Electron viewport checks, not physical Android tests.

@@ -18,7 +18,7 @@ Dependencies are installed with `npm ci` when missing or when the lockfile chang
 Build-Windows.bat
 ```
 
-Output: `release/ChessAsh-Setup-1.4.0.exe`, with the version taken from `package.json`.
+Output: `release/ChessAsh-Setup-1.4.5.exe`, with the version taken from `package.json`.
 
 Electron packages the application directory; Inno Setup creates the installer. The default installation is per user and does not need administrator rights. It adds the application directory to the user's PATH, offers a desktop shortcut and creates a Start menu entry. In a new terminal, `chessash` opens the app.
 
@@ -34,7 +34,7 @@ For a signed build, configure a trusted certificate's `CHESSASH_SIGNING_THUMBPRI
 Build-Android.bat
 ```
 
-Output: `release/ChessAsh-1.4.0-android.apk`. This is a release APK signed for sideloading. The script verifies the APK's signer and version metadata. `Build-Android.bat -Debug` builds a separate debug APK.
+Output: `release/ChessAsh-1.4.5-android.apk`. This is a release APK signed for sideloading. The script verifies the APK's signer and version metadata. `Build-Android.bat -Debug` builds a separate debug APK.
 
 The application ID stays `dev.flamedev.chessash`. Keep the existing signing key to install future release builds as updates. A debug APK or an APK signed with another key cannot be updated in place with this release key.
 
@@ -48,7 +48,7 @@ Set the release version in `package.json`. Increase `androidVersionCode` in `bui
 
 `build/release.json` also sets the publisher URL, copyright text and documentation list. The installer includes the README, training guide, licence, credits, third-party notices and build/platform/signing instructions. `README_GITHUB.md` mirrors the general public repository README.
 
-Current release source: `1.4.0`, with Android version code `7`. Its changes are listed in `docs/releases/V1.4.md`. Build fresh packages from the selected release source before publishing.
+Current release source: `1.4.5`, with Android version code `8`. Release notes are in `docs/releases/V1.4.5.md`. Build fresh packages from the selected release source before publishing.
 
 The Windows build bundles both `rules/review.foxash` and `rules/training.foxash` with Foxash 1.4.0. Android uses the matching shared default policies. Keep both scripts and the runtime resources when exporting source or packaging Windows.
 
@@ -60,14 +60,16 @@ npm run build
 node scripts/v13-training-smoke.mjs
 ```
 
-The current checks pass 87 tests with one optional network test skipped. The training UI check uses a hidden Electron window, isolated local data, the actual Windows Foxash bridge and local Stockfish. It covers reply playback, recap counts, assisted-answer scheduling, EN/IT and a phone-sized viewport. These results do not establish a physical Android test or an installed v1.4 upgrade test.
+The current checks pass 128 tests with one optional network test skipped. The training UI check uses a hidden Electron window, isolated local data, the actual Windows Foxash bridge and local Stockfish. It covers reply playback, recap counts, assisted-answer scheduling, EN/IT and a phone-sized viewport. These results do not establish a physical Android test or an installed v1.4 upgrade test.
 
-`node scripts/v12-ui-smoke.mjs` checks the existing review flow. `node scripts/package-ui-smoke.mjs` checks `release/win-unpacked/ChessAsh.exe`; run it after packaging the current source so it does not check an older application. Publishing requires fresh v1.4 artifacts, checksum verification and the separate GitHub Desktop/Actions release workflow.
+`node scripts/v12-ui-smoke.mjs` checks the existing review flow. `node scripts/package-ui-smoke.mjs` checks `release/win-unpacked/ChessAsh.exe`; run it after packaging the current source so it does not check an older application. Publishing requires fresh v1.4.5 artifacts, checksum verification and the GitHub Desktop/Actions release workflow.
 
-`publish-v1.4.yml` publishes locally built, verified downloads from the temporary `release-upload-v1.4` branch. Push the source commit on `main` through GitHub Desktop first, then upload the matching artifacts on that temporary branch. Actions verifies SHA-256 checksums and source correspondence before publishing tag `V1.4` at the source commit. The temporary upload branch is removed after publication, and the generated source archives point to the source commit rather than the binary-upload commit.
+`publish-v1.4.5.yml` publishes locally built, verified downloads from the temporary `release-upload-v1.4.5` branch. Push the source commit on `main` through GitHub Desktop first, then upload the matching artifacts on that temporary branch. Actions verifies SHA-256 checksums and source correspondence before publishing tag `V1.4.5` at the source commit. The temporary upload branch is removed after publication, and the generated source archives point to the source commit rather than the binary-upload commit.
 
 ## Source and licences
 
 Application source is GPL-3.0-or-later. Keep third-party notices with redistributed builds. Stockfish's exact source reference and GPL text are bundled. Foxash 1.4.0 is MIT licensed; its runtime, licence and corresponding source archive are in `resources/foxash`. Foxash repository: [github.com/FlameFirelife/foxash](https://github.com/FlameFirelife/foxash/).
 
 The public source excludes `.private/`, credentials, downloaded SDKs, dependency caches and generated installers. See `.gitignore` before publishing. This workflow builds local artifacts; uploading a release or creating a GitHub repository is separate.
+
+`node scripts/explanation-corpus-smoke.mjs` checks twelve varied positions through actual Stockfish/Foxash, legal alternatives, tactical explanations, EN/IT and immutable results. `node scripts/explanation-smoke.mjs` checks a real-engine tactical cause and alternative benefit, saved explanations/hints, EN/IT, fixed board geometry and phone layout. See [explanation evidence](docs/EXPLANATIONS.md).

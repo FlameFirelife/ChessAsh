@@ -57,7 +57,8 @@ describe('explicit board-grounded coaching', () => {
     expect(white.text).toBe('Il tuo avversario può prendere il tuo pedone in d5.');
     expect(black.text).toBe('Puoi prendere il pedone del tuo avversario in d5.');
     expect(white.detail).toContain('Hai spostato il tuo pedone da e4 a d5');
-    expect(white.best).toContain('Mossa migliore: spostare il tuo cavallo da g1 a f3');
+    expect(white.best).toBe('Mossa migliore: cavallo g1 → f3.');
+    expect(white.detail).toContain('Mossa migliore: spostare il tuo cavallo da g1 a f3');
     expect(white.detail).not.toMatch(/Your|White|Black|move|engine/);
   });
   it('keeps Black’s perspective correct for a missed immediate checkmate', () => {

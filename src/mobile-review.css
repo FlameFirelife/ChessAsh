@@ -1,0 +1,77 @@
+@media (max-width: 780px) {
+  .app-header.review-header {
+    flex-wrap: nowrap;
+    min-height: 56px;
+    height: 56px;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+  .review-header .brand { display: none; }
+  .app-header.review-header nav {
+    order: 0;
+    flex: 1 1 auto;
+    flex-basis: auto;
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    gap: 2px;
+  }
+  .app-header.review-header nav button {
+    min-width: 0;
+    min-height: 40px;
+    padding: 6px 4px;
+    gap: 3px;
+    font-size: .75rem;
+    white-space: nowrap;
+  }
+  .review-header .header-actions { flex: 0 0 auto; margin: 0; gap: 2px; }
+  .review-header .header-actions button { width: 36px; min-width: 36px; min-height: 40px; padding: 6px; }
+  .review-header .header-actions .primary { font-size: 0; gap: 0; }
+  .review-header .header-actions .primary svg { width: 18px; height: 18px; }
+  .workspace {
+    --mobile-coach-size: clamp(160px, 23svh, 196px);
+    --mobile-board-size: max(240px, calc(100svh - var(--app-safe-top) - var(--app-safe-bottom) - var(--app-header-height, 56px) - var(--mobile-coach-size) - 198px));
+    padding-top: 8px;
+  }
+  .workspace .board-column {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(92px, 38%);
+    column-gap: 8px;
+    align-items: start;
+  }
+  .board-column > * { grid-column: 1 / -1; }
+  .board-column > .game-heading { grid-column: 1; block-size: 44px; min-block-size: 44px; margin: 0; gap: 4px; }
+  .board-column .game-heading h1 { font-size: .875rem; margin: 2px 0 0; }
+  .board-column .game-heading .section-label { font-size: .625rem; }
+  .board-column .game-heading .icon-button { width: 32px; min-width: 32px; min-height: 36px; padding: 4px; }
+  .board-column > .review-perspective {
+    grid-column: 2;
+    block-size: 44px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    font-size: .625rem;
+    line-height: 1.2;
+  }
+  .board-column .review-perspective select { max-width: 100%; width: 100%; min-height: 30px; padding: 3px 6px; font-size: .75rem; }
+  .workspace .review-message-slot { block-size: var(--mobile-coach-size); min-block-size: var(--mobile-coach-size); }
+  .board-column > .player-strip { height: 24px; min-height: 24px; font-size: .75rem; }
+  .board-column .player-avatar { width: 22px; height: 22px; font-size: .6875rem; }
+  .board-column > .board-with-eval,
+  .board-column > .player-strip { width: min(100%, calc(var(--mobile-board-size) + 24px)); margin-inline: auto; }
+  .board-column > .board-controls { width: 100%; margin-top: 0; padding-block: 3px; }
+  .board-column .board-controls button { min-height: 40px; padding: 6px; }
+  .board-column .board-controls .icon-button { width: 32px; }
+  .board-column .move-controls { gap: 2px; }
+  .board-column .move-controls > span { min-width: 48px; }
+}
+@media (max-width: 430px) {
+  .app-header.review-header nav button > svg { display: none; }
+}
+@media (max-width: 360px) {
+  .app-header.review-header nav .count { display: none; }
+}

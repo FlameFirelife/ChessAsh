@@ -1,6 +1,6 @@
 # Foxash review and training policies
 
-Windows bundles Foxash 1.4.0 and executes `review.foxash` against engine-verified facts. Users do not install Foxash separately. The original language repository is not changed.
+Windows bundles Foxash 1.4.0 and executes `review.foxash` against engine-verified facts. Users do not install Foxash separately.
 
 The review script chooses classifications, key moments and per-category counts, and returns template/hint metadata for review and retry guidance. Stockfish and the chess core supply evaluations and verified facts; the script does not search chess positions or decide legality.
 

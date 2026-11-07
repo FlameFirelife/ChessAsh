@@ -38,9 +38,11 @@ The Android file plugin invokes the system document picker for PGN exports, avoi
 
 Android supports the shared training interface, local Stockfish grading and separate practice history. Matching TypeScript defaults provide review and training decisions; the Windows Foxash executable is not used on Android. Tests compare its training focus, priorities and repeat intervals against the actual Foxash runtime.
 
-## V1.4 verification and release state
+## V1.4.5 verification
 
-Release source is version 1.4.0 with Android code 7. Current unit tests pass (87 passed, one optional network test skipped), and the interface build and real-engine Windows training UI check pass. Full app restart, source-position navigation and persistent progress checks also pass. These checks cover EN/IT and a 390px viewport, with original reviews and notes preserved. They do not establish physical Android or installed-upgrade behaviour. Fresh packages are produced by the build commands above.
+Release source is version 1.4.5 with Android code 8. The interface build, 128 unit tests (one optional network test skipped), twelve-position Stockfish/Foxash explanation corpus and review UI checks pass. EN/IT, short and expanded explanations, both player perspectives, compact mobile layout and preserved saved reviews/notes are covered. These checks do not establish physical Android or installed-upgrade behaviour. Fresh packages are produced by the build commands above.
+
+Shared tactical-cause explanations run in the interface on both platforms and use saved engine continuations. They run locally. See [EXPLANATIONS.md](docs/EXPLANATIONS.md) for supported mechanisms and verification limits.
 
 ## Sources
 

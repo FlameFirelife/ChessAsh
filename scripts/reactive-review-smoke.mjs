@@ -17,7 +17,7 @@ await page.reload();await page.getByRole('button',{name:'Best move · before',ex
 assert.equal(await page.getByRole('button',{name:'Hint',exact:true}).count(),0);
 assert.equal(await page.locator('line[data-suggestion="e4d5"]').count(),1);
 assert.match(await page.locator('.speech-text').innerText(),/queen from d8 to d5/);
-assert.match(await page.locator('.best-move-description').innerText(),/pawn from e4 to d5/);
+assert.match(await page.locator('.best-move-description').innerText(),/pawn e4 → d5/);
 await page.getByRole('button',{name:'Highlight e4 on the board',exact:true}).first().hover();assert.ok((await page.locator('.square.review-focus').count())>=2);
 await page.waitForTimeout(450);
 await page.getByRole('button',{name:'Played move · after',exact:true}).click();

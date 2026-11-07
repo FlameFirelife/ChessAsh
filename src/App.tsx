@@ -676,7 +676,7 @@ export default function App() {
 
   return (
     <>
-      <header className="app-header">
+      <header className={`app-header${ready && game && screen === 'board' ? ' review-header' : ''}`}>
         <button
           className="brand"
           onClick={() => setScreen("board")}
@@ -718,6 +718,7 @@ export default function App() {
           </button>
           <button
             className="primary small"
+            aria-label={t('Import game')}
             onClick={() => {
               setError("");
               openImport();

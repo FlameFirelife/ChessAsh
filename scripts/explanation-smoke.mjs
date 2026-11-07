@@ -1,0 +1,50 @@
+import { _electron as electron } from 'playwright';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+
+const app = await electron.launch({ args: ['.'], env: { ...process.env, CHESSASH_TEST: '1', CHESSASH_TEST_DATA: path.resolve('work/qa/explanations-' + Date.now()) } });
+try {
+  const page = await app.firstWindow();
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  await page.evaluate(() => localStorage.setItem('chessash:language', 'en')); await page.reload();
+  await page.getByRole('button', { name: 'Import game', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Paste PGN' }).fill('[Event "Explanation check"]\n[White "Player"]\n[Black "Opponent"]\n[SetUp "1"]\n[FEN "r7/7k/8/8/8/2B5/8/R6K w - - 0 1"]\n\n1. Bd2 *');
+  await page.getByRole('button', { name: 'Import PGN', exact: true }).click();
+  await page.getByRole('button', { name: /Start review|Analyse game/, exact: true }).click();
+  await page.getByText('Review saved', { exact: false }).waitFor({ timeout: 120000 });
+  await page.getByRole('button', { name: 'Last move', exact: true }).click();
+  const text = await page.locator('.speech-text').innerText();
+  assert.match(text, /rook on a1/); assert.match(text, /defender|defended/);
+  const brief = await page.locator('.best-move-description').innerText();
+  assert.equal(brief, 'Best move: rook a1 → a8. Removes the attacker.');
+  assert.equal(await page.locator('.coach-expansion').getAttribute('open'), null);
+  await page.locator('.coach-expansion summary').click();
+  const detail = await page.locator('.coach-expansion').innerText();
+  assert.match(detail, /Analysed continuation/);
+  assert.match(detail, /alternative removes .*rook on a8/);
+  assert.match(detail, /move the rook from a1 to a8, taking the rook on a8/);
+  const bounds = await page.locator('.chessboard').boundingBox();
+  await page.locator('.coach-expansion summary').click();
+  assert.deepEqual(await page.locator('.chessboard').boundingBox(), bounds);
+  const saved = await page.evaluate(async () => {
+    const db = await new Promise(resolve => { const r = indexedDB.open('chessash', 1); r.onsuccess = () => resolve(r.result); });
+    return new Promise(resolve => { const r = db.transaction('games').objectStore('games').getAll(); r.onsuccess = () => resolve(r.result[0]); });
+  });
+  assert.match(saved.review.results[0].explanation, /rook on a1/);
+  assert.match(saved.review.results[0].explanation, /alternative removes .*rook on a8/);
+  assert.match(saved.review.results[0].hints[0], /defending/);
+  const before = JSON.stringify(saved.review);
+  await page.evaluate(() => localStorage.setItem('chessash:language', 'it')); await page.reload();
+  assert.match(await page.locator('.speech-text').innerText(), /torre(?: bianca)? in a1/);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.coach-expansion summary').click();
+  assert.equal(await page.locator('.best-move-description').innerText(), 'Mossa migliore: torre a1 → a8. Elimina il pezzo attaccante.');
+  assert.match(await page.locator('.coach-expansion').innerText(), /mossa suggerita elimina .*torre.*a8/);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await mkdir('verification', { recursive: true });
+  await page.screenshot({ path: 'verification/explanations-phone-it.png', fullPage: true });
+  assert.deepEqual(errors, []);
+  await writeFile('verification/explanation-results.json', JSON.stringify({ passed: true, text, brief, detail, savedHint: saved.review.results[0].hints[0], replyPv: saved.review.results[0].replyPv, before, checks: ['actual Stockfish/Foxash review identifies abandoned defender', 'short best-move summary and full reasoning in initially collapsed disclosure', 'saved explanation and causal hint', 'fixed board during disclosure', 'Italian and 390px layout'], limitation: 'One real-engine UI fixture; broader positions are checked separately by explanation-corpus-smoke. Not a chess-strength evaluation or physical Android test.' }, null, 2));
+  console.log('Explanation UI and real-engine checks passed.');
+} finally { await app.close(); }

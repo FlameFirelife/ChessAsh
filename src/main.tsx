@@ -7,6 +7,7 @@ import "./refinements.css";
 import "./playful.css";
 import "./review-layout.css";
 import './safe-area.css';
+import './mobile-review.css';
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <LanguageProvider><App /></LanguageProvider>

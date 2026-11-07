@@ -46,7 +46,7 @@ export default function Training({games,username,onLibrary,onSource,soundEnabled
  const priorities=Object.fromEntries(cards.map((card,index)=>[card.id,plan!.rows[index].priority]));
  const queue=policyReady?trainingQueue(cards,history,Date.now(),priorities):[];
  const card=session[index];
- const localizedReply=useMemo(()=>card&&reply.length?trainingReplyLine(reply[0].beforeFen,reply.map(r=>r.move),language,card.result.color):[],[reply,language,card]);
+ const localizedReply=useMemo(()=>card&&reply.length?trainingReplyLine(reply[0].beforeFen,reply.map(r=>r.move),language,card.result.color,{fen:card.fen,move:attemptMove}):[],[reply,language,card,attemptMove]);
  const names:Record<TrainingPattern,string>={capture:it?'Occasioni di cattura':'Capture opportunities',check:it?'Scacchi da trovare':'Finding checks',reply:it?'Risposte avversarie':'Opponent replies',improve:it?'Scelte da migliorare':'Better choices',undefended:it?'Pezzi indifesi':'Undefended pieces',fork:it?'Attacchi doppi':'Forks',backrank:it?'Matto sull’ultima traversa':'Back-rank mates'};
  const prompts:Record<TrainingPattern,string>={capture:it?'Confronta le catture disponibili prima di scegliere.':'Compare the available captures before choosing.',check:it?'Cerca uno scacco e controlla le risposte del re.':'Look for a check and consider the king’s replies.',reply:it?'Controlla gli scacchi e le catture del tuo avversario prima di decidere.':'Check your opponent’s checks and captures before deciding.',improve:it?'Confronta le tue mosse candidate e le risposte avversarie.':'Compare your candidate moves and the opponent’s replies.',undefended:it?'Controlla quali pezzi sono senza difesa prima di scegliere.':'Check which pieces are undefended before choosing.',fork:it?'Cerca una mossa che attacchi due pezzi contemporaneamente.':'Look for a move that attacks two pieces at once.',backrank:it?'Controlla gli scacchi sull’ultima traversa e le vie di fuga del re.':'Check the back-rank checks and the king’s escape squares.'};
  const groups=Object.entries(names).map(([pattern,name])=>({pattern,name,cards:cards.filter(c=>c.pattern===pattern)})).filter(g=>g.cards.length).sort((a,b)=>b.cards.length-a.cards.length);
@@ -82,7 +82,7 @@ export default function Training({games,username,onLibrary,onSource,soundEnabled
     const before=await analyzePosition(card.fen,{depth:12,multiPv:1,signal:active.signal});
     const after=await analyzePosition(played.fen,{depth:12,multiPv:1,signal:active.signal});
     correct=acceptableTrainingMove(before,after,card.result.color);
-    if(!correct&&!active.signal.aborted)setReply(trainingReplyLine(played.fen,after.pv,language,card.result.color));
+    if(!correct&&!active.signal.aborted)setReply(trainingReplyLine(played.fen,after.pv,language,card.result.color,{fen:card.fen,move:uci}));
    }
    if(active.signal.aborted)return;
    if(await remember(card,correct,active.signal))setState(correct?'correct':'missed');
