@@ -12,7 +12,7 @@ for(const entry of await readdir(root,{withFileTypes:true})){
  if(excludes.has(entry.name))continue;
  await cp(path.join(root,entry.name),path.join(out,entry.name),{recursive:true,filter:src=>{
   const relative=path.relative(root,src).replaceAll('\\','/');
-  return !relative.split('/').some(p=>excludes.has(p)||(/^\.env(?:\.|$)/.test(p)&&p!=='.env.example'))&&!(relative.startsWith('android/') && relative.split('/').includes('build'))&&!relative.startsWith('android/build')&&!relative.startsWith('android/app/src/main/assets/public')&&!/\.(keystore|jks|dpapi|pfx|p12)$/i.test(relative);
+  return !relative.split('/').some(p=>excludes.has(p)||(/^\.env(?:\.|$)/.test(p)&&p!=='.env.example'))&&!(relative.startsWith('android/') && relative.split('/').includes('build'))&&!relative.startsWith('android/capacitor-cordova-android-plugins')&&!['android/app/src/main/assets/capacitor.config.json','android/app/src/main/assets/capacitor.plugins.json','android/app/src/main/res/xml/config.xml'].includes(relative)&&!relative.startsWith('android/app/src/main/assets/public')&&!/\.(keystore|jks|dpapi|pfx|p12)$/i.test(relative);
  }});
 }
 await writeFile(path.join(out,'SOURCE-EXPORT.txt'),'Complete application source and bundled assets. Dependencies and SDK caches are omitted. Android signing keys are intentionally excluded. See README.md and PLATFORMS.md.\n');
