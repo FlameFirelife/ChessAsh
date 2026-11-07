@@ -1,6 +1,6 @@
 # Third-party notices
 
-ChessAsh is an independent companion by FlameDev, not affiliated with Chess.com or Lichess. It uses the documented public Chess.com API for finished games. No Chess.com artwork, sounds, logos or proprietary review scores are included.
+ChessAsh is an independent companion by FlameDev Studios, not affiliated with Chess.com or Lichess. It uses the documented public Chess.com API for finished games. No Chess.com artwork, sounds, logos or proprietary review scores are included.
 
 ## Stockfish.js
 
