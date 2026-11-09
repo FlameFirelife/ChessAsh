@@ -1,0 +1,17 @@
+[Event "Rook stalemate regression"]
+[Site "?"]
+[White "?"]
+[Black "?"]
+[Result "1/2-1/2"]
+[SetUp "1"]
+[FEN "3k4/p2n4/1b3n2/2p2p2/2q1p1r1/K7/3R4/1r1b4 w - - 251 141"]
+
+141. Rxd7+ Kc8 142. Rc7+ Kb8 143. Rb7+ Ka8 144. Rxa7+ Kb8 145. Rb7+ Kc8 146.
+Rc7+ Kd8 147. Rd7+ Ke8 148. Re7+ Kf8 149. Rf7+ Kg8 150. Rg7+ Kh8 151. Rg8+ Kh7
+152. Rg7+ Kh6 153. Rg6+ Kh5 154. Rg5+ Kh4 155. Rxg4+ Kh3 156. Rg3+ Kh2 157. Rg2+
+Kh1 158. Rh2+ Kg1 159. Rg2+ Kf1 160. Rf2+ Ke1 161. Re2+ Kf1 162. Rf2+ Kg1 163.
+Rg2+ Kh1 164. Rg1+ Kh2 165. Rg2+ Kh3 166. Rg3+ Kh4 167. Rg4+ Kh5 168. Rg5+ Kh6
+169. Rg6+ Kh7 170. Rg7+ Kh8 171. Rh7+ Kg8 172. Rg7+ Kf8 173. Rf7+ Ke8 174. Re7+
+Kd8 175. Rd7+ Kc8 176. Rc7+ Kb8 177. Rb7+ Ka8 178. Ra7+ Kb8 179. Rb7+ Kc8 180.
+Rc7+ Kd8 181. Rd7+ Ke8 182. Re7+ Kf8 183. Rf7+ Kg8 184. Rg7+ Kh8 185. Rg8+ Kh7
+186. Rg7+ Kh6 187. Rg6+ Kh5 188. Rg5+ Kh4 189. Rg4+ 1/2-1/2

@@ -6,7 +6,7 @@ The interface and Stockfish WebAssembly worker are shared. Windows uses Electron
 
 Run `Build-Windows.bat` or `npm run package:win`. This uses Electron for the app directory and Inno Setup 6 for the installer. The scripts prepare assets and build the current interface before packaging. On npm versions that disable dependency install scripts, explicitly run `node node_modules/electron/install.js` before launching or packaging.
 
-`electron/main.cjs` owns the narrow native bridge. Renderer code has no Node access. Chess.com requests are restricted to the documented HTTPS public API. API keys are encrypted with Electron safeStorage for the current Windows user. Keys are never returned to the renderer after saving. Changing the configured endpoint discards the saved key, avoiding accidental disclosure to a different service.
+`electron/main.cjs` owns the narrow native bridge. Renderer code has no Node access. Chess.com and Lichess imports are restricted to their documented public HTTPS export endpoints. Lichess username imports are bounded to 300 finished games; account and unrelated endpoints are rejected. API keys are encrypted with Electron safeStorage for the current Windows user. Keys are never returned to the renderer after saving. Changing the configured endpoint discards the saved key, avoiding accidental disclosure to a different service.
 
 The bundled Foxash 1.4.0 runtime executes the bundled `review.foxash` and `training.foxash` scripts. Review rules choose move labels and key moments; training rules choose coaching focus, queue priorities and repeat intervals. Both bridges validate input/output and use isolated temporary directories. Custom coaching packs contain numeric review thresholds, not executable scripts.
 
@@ -38,9 +38,9 @@ The Android file plugin invokes the system document picker for PGN exports, avoi
 
 Android supports the shared training interface, local Stockfish grading and separate practice history. Matching TypeScript defaults provide review and training decisions; the Windows Foxash executable is not used on Android. Tests compare its training focus, priorities and repeat intervals against the actual Foxash runtime.
 
-## V1.4.5 verification
+## V1.5 verification
 
-Release source is version 1.4.5 with Android code 8. The interface build, 128 unit tests (one optional network test skipped), twelve-position Stockfish/Foxash explanation corpus and review UI checks pass. EN/IT, short and expanded explanations, both player perspectives, compact mobile layout and preserved saved reviews/notes are covered. These checks do not establish physical Android or installed-upgrade behaviour. Fresh packages are produced by the build commands above.
+Release source is version 1.5.0 with Android code 9. The interface build, 142 unit tests (one optional network test skipped), twelve-position Stockfish/Foxash explanation corpus and review UI checks pass. EN/IT, short and expanded explanations, both player perspectives, compact mobile layout and preserved saved reviews/notes are covered. These checks do not establish physical Android or installed-upgrade behaviour. Fresh packages are produced by the build commands above.
 
 Shared tactical-cause explanations run in the interface on both platforms and use saved engine continuations. They run locally. See [EXPLANATIONS.md](docs/EXPLANATIONS.md) for supported mechanisms and verification limits.
 
@@ -57,3 +57,7 @@ Current build and runtime results are recorded in STATUS.md. Do not infer device
 ## Foxash source
 
 Foxash by FlameDev Studios: [github.com/FlameFirelife/foxash](https://github.com/FlameFirelife/foxash/). Windows bundles the runtime and corresponding source archive.
+
+## Import and classification follow-up
+
+V1.5 supports Lichess imports, shared quality icons, optional Chess.com names, checked declined/stalemate sacrifices and fresh reanalysis. See [imports](docs/IMPORTS.md) and [classification](docs/CLASSIFICATION.md) for mechanisms and verification.

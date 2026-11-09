@@ -4,13 +4,13 @@ Download the Windows installer or Android APK from [Releases](https://github.com
 
 ## Import a game
 
-Choose **Import game** to enter a Chess.com username, open a PGN or paste one. For your own account, choose **This is my account. Keep it synced.** ChessAsh checks for recent finished games while the app is active and online. Other imported players have separate Library collections.
+Choose **Import game**, select Chess.com or Lichess, then enter a username. Lichess also accepts a single game link without a username. You can open or paste a PGN too. For your own account, choose **This is my account. Keep it synced.** ChessAsh checks for recent finished games while the app is active and online. Other imported players have separate Library collections.
 
 The included sample lets you try a review without importing your own game. Samples do not become personal training exercises.
 
 ## Review the turning points
 
-Choose your side under **Review as**, then start a review. Stockfish runs on your device. Completed reviews and notes stay in your local library and can be opened offline.
+Choose your side under **Review as**, then start a review. Stockfish runs on your device. Completed reviews and notes stay in your local library and can be opened offline. **Reanalyse** starts a new engine review; **Continue review** resumes a paused review.
 
 Use the arrows or move list to step through the game. The coach explains the move above the board. The blue best-move summary names the piece, its source and destination, and a short benefit when the position supports one. Open **Full explanation** for the complete reasoning and analysed continuation. Select a linked square to highlight it on the board.
 
@@ -26,7 +26,7 @@ Practice results shape what returns next. Unfinished sessions resume, and the re
 
 ## Adjust the experience
 
-Settings include English/Italian, appearance, text size, reduced motion and move sounds. Enable **Move sounds** for the soft wooden tap. The advantage graph, detailed notation and advanced analysis controls are optional.
+Settings include English/Italian, appearance, text size, reduced motion and move sounds. **Move-quality names** chooses ChessAsh or Chess.com terminology, such as Sound sacrifice or Brilliant. Enable **Move sounds** for the soft wooden tap. The advantage graph, detailed notation and advanced analysis controls are optional.
 
 ## Use the optional tutor
 
@@ -35,3 +35,7 @@ On Windows, open **Tutor** and choose Ollama or your API provider. Basic review 
 Tutor replies support formatted text and legal line previews. Explanations can still be wrong. Engine depth and available continuations limit what ChessAsh can establish about a position; an analysed line does not mean every move is forced.
 
 For build instructions and platform requirements, see [BUILDING.md](../BUILDING.md) and [PLATFORMS.md](../PLATFORMS.md). Sources and licences are in [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+
+## Share a review card
+
+Select Share review beside the PGN export button. Choose a moment and whether to show player names. Every card includes the ChessAsh repository URL. Share opens Android’s sharing menu; Save PNG image saves a separate copy. Browsers with file sharing support can share directly too.

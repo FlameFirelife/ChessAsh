@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
-import { LABEL_INFO } from './policy';
+import { qualityName } from './qualityNames';
+import type { QualityNames } from './qualityNames';
 import type { Game } from './types';
 
 function stableId(text: string): string {
@@ -27,9 +28,10 @@ export function parsePgn(pgn: string, source = 'PGN'): Game {
   const initial = headers.FEN || new Chess().fen();
   const positions = [initial, ...history.map(move => move.after)];
   const normalized = chess.pgn();
-  const url = /^https:\/\/(www\.)?chess\.com\//i.test(headers.Link || headers.Site || '') ? headers.Link || headers.Site : undefined;
+  const url = /^https:\/\/(?:(?:www\.)?chess\.com|(?:www\.)?lichess\.org)\//i.test(headers.Link || headers.Site || '') ? headers.Link || headers.Site : undefined;
+  const lichessId = url?.match(/^https:\/\/(?:www\.)?lichess\.org\/(?:game\/)?([a-z0-9]{8})(?:[a-z0-9]{4})?(?:\/(?:white|black))?(?:[?#].*)?$/i)?.[1];
   return {
-    id: stableId(JSON.stringify([headers.White, headers.Black, headers.Date, headers.UTCDate, headers.UTCTime, headers.Link, history.map(move => move.lan), initial])),
+    id: lichessId ? `lichess:${lichessId}` : stableId(JSON.stringify([headers.White, headers.Black, headers.Date, headers.UTCDate, headers.UTCTime, headers.Link, history.map(move => move.lan), initial])),
     pgn: normalized, headers, moves: history.map(move => move.san), positions, source, url, importedAt: Date.now(),
   };
 }
@@ -39,7 +41,7 @@ export function parsePgnCollection(text: string, source = 'PGN'): Game[] {
   return chunks.map(chunk => parsePgn(chunk, source));
 }
 
-export function exportPgn(game: Game): string {
+export function exportPgn(game: Game, qualityNames: QualityNames = 'chessash'): string {
   const chess = new Chess();
   chess.loadPgn(game.pgn);
   while (chess.undo()) {}
@@ -49,7 +51,7 @@ export function exportPgn(game: Game): string {
     chess.move(game.moves[ply - 1]);
     const result = game.review?.results.find(item => item.ply === ply);
     const comments: string[] = [];
-    if (result) comments.push(`ChessAsh: ${LABEL_INFO[result.label].name}. ${result.explanation} [%eval ${(result.after / 100).toFixed(2)}]`);
+    if (result) comments.push(`ChessAsh: ${qualityName(result.label, qualityNames)}. ${result.explanation} [%eval ${(result.after / 100).toFixed(2)}]`);
     if (game.notes?.[ply]) comments.push(game.notes[ply]);
     if (comments.length) chess.setComment(comments.join(' '));
   }

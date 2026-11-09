@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { Game } from '../core/types';
-import { importChessCom } from '../core/importer';
+import { importChessCom, importLichess } from '../core/importer';
+import { accountIdentity } from '../core/accountIdentity';
 import { associateGames, mergeAccountGames, migrateLegacyAccount, normaliseUsername, validUsername } from './model';
 import { AccountSyncCoordinator, SYNC_INTERVAL } from './sync';
 import type { SyncSnapshot } from './sync';
@@ -24,7 +25,7 @@ export function useAccounts({ games, setGames, ready = true }: {
   const setters = useRef({ setGames }); setters.current = { setGames };
   const controller = useRef<AccountSyncCoordinator | null>(null);
   if (!controller.current) controller.current = new AccountSyncCoordinator({
-    fetchGames: importChessCom,
+    fetchGames: (key, progress, months) => { const identity = accountIdentity(key); return identity.provider === 'lichess' ? importLichess(identity.username, progress, months) : importChessCom(identity.username, progress, months); },
     commit: incoming => setters.current.setGames(previous => mergeAccountGames(previous, incoming)),
     hydrate: name => readTimes()[name] || 0,
     onState: (name, snapshot) => {
@@ -47,13 +48,16 @@ export function useAccounts({ games, setGames, ready = true }: {
   }, [mainUsername, ready]);
   function setMainUsername(username: string): boolean {
     const name = normaliseUsername(username);
-    if (name && !validUsername(name)) { setConfigError('Enter a valid Chess.com username.'); return false; }
+    if (name && !validUsername(name)) { setConfigError('Enter a valid username.'); return false; }
     setConfigError(''); write(MAIN_KEY, name); setMain(name); return true;
   }
-  async function importAccount(username: string, months = 3, onProgress?: (message: string) => void): Promise<Game[]> {
+  async function importAccount(username: string, months = 3, onProgress?: (message: string) => void, link = ''): Promise<Game[]> {
     const name = normaliseUsername(username);
-    if (!validUsername(name)) throw new Error('Enter a valid Chess.com username.');
-    return associateGames(await importChessCom(name, onProgress, months), name);
+    if (!validUsername(name)) throw new Error('Enter a valid username.');
+    const identity = accountIdentity(name);
+    const incoming = identity.provider === 'lichess' ? await importLichess(identity.username, onProgress, months, link) : await importChessCom(identity.username, onProgress, months);
+    if (identity.provider === 'lichess' && link && !incoming.every(game => [game.headers.White, game.headers.Black].some(player => player?.toLowerCase() === identity.username))) throw new Error('The selected game does not include this Lichess player.');
+    return associateGames(incoming, name);
   }
   async function syncMain() {
     if (!mainUsername) { setConfigError('Choose your main username to keep its games synced.'); return; }

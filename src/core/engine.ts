@@ -154,3 +154,7 @@ export function stopEngine(): void {
   engine.rejectActive?.(abortError());
   engine.reset();
 }
+export function resetEngineAnalysis(): void {
+  stopEngine();
+  cache.clear();
+}

@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
-import { analyzePosition, ENGINE_VERSION } from './engine';
+import { analyzePosition, ENGINE_VERSION, resetEngineAnalysis } from './engine';
+import { sacrificeOffers, verifySacrifice } from './sacrifice';
 import { classify, POLICY_VERSION, LABEL_INFO } from './policy';
 import { isBookMove } from './openings';
 import { playUci } from './pgn';
@@ -12,30 +13,7 @@ function material(fen: string, color: 'w' | 'b'): number {
   return new Chess(fen).board().flat().reduce((sum, piece) => !piece ? sum : sum + MATERIAL[piece.type] * (piece.color === color ? 1 : -1), 0);
 }
 
-function soundSacrifice(beforeFen: string, played: string, after: EngineResult, color: 'w' | 'b'): boolean {
-  if (after.depth < 14 || after.pv.length < 4 || after.score * (color === 'w' ? 1 : -1) < -50) return false;
-  const chess = new Chess(beforeFen);
-  const mover = chess.get(played.slice(0, 2) as Parameters<Chess['get']>[0]);
-  if (!mover || MATERIAL[mover.type] < 3) return false;
-  const baseline = material(beforeFen, color);
-  const result = playUci(beforeFen, played);
-  if (!result) return false;
-  try {
-    const replyBoard = new Chess(result.fen);
-    const reply = after.pv[0];
-    const capture = replyBoard.move({ from: reply.slice(0, 2), to: reply.slice(2, 4), promotion: reply[4] });
-    if (capture.to !== played.slice(2, 4) || !capture.captured || MATERIAL[capture.captured] < 3) return false;
-  } catch { return false; }
-  let fen = result.fen;
-  for (const move of after.pv.slice(0, 4)) {
-    const next = playUci(fen, move);
-    if (!next) return false;
-    fen = next.fen;
-  }
-  return material(fen, color) <= baseline - 2;
-}
-
-export function factsForMove(game: Game, ply: number, before: EngineResult, after: EngineResult): ReviewFacts {
+export function factsForMove(game: Game, ply: number, before: EngineResult, after: EngineResult, sacrifice = false): ReviewFacts {
   const board = new Chess(game.positions[ply - 1]);
   const forced = board.moves().length === 1;
   const move = board.move(game.moves[ply - 1]);
@@ -49,7 +27,7 @@ export function factsForMove(game: Game, ply: number, before: EngineResult, afte
     loss, playedBest, book: game.positions[0] === new Chess().fen() && isBookMove(game.moves, ply),
     missedChance: before.score * side >= 150 && after.score * side < 75,
     critical: !!second && gap >= 150 && before.score * side >= -100 && before.score * side <= 1000,
-    sacrifice: playedBest && soundSacrifice(game.positions[ply - 1], move.lan, after, move.color),
+    sacrifice,
     verified: Math.min(before.depth, after.depth) >= 14,
   };
 }
@@ -102,7 +80,8 @@ export function groupForcedConsequence(game: Game, result: MoveReview, previous:
 
 export async function analyzeGame(game: Game, options: AnalyzeOptions = {}): Promise<Review> {
   const depth = Math.max(4, Math.min(22, options.depth || 12));
-  const previous = options.existing || game.review;
+  if (options.fresh) resetEngineAnalysis();
+  const previous = options.fresh ? undefined : options.existing || game.review;
   const resumable = previous?.version === POLICY_VERSION && previous.depth === depth && previous.engine === ENGINE_VERSION;
   const results = resumable ? [...previous.results].sort((a, b) => a.ply - b.ply) : [];
   let start = 0;
@@ -137,12 +116,17 @@ export async function analyzeGame(game: Game, options: AnalyzeOptions = {}): Pro
       const side = new Chess(game.positions[index]).turn() === 'w' ? 1 : -1;
       const rawLoss = (before.score - after.score) * side;
       const volatileMate = (before.mate === undefined) !== (after.mate === undefined);
-      if (workingDepth < 14 && (rawLoss >= 100 || volatileMate)) {
+      const playedBoard = new Chess(game.positions[index]);
+      const playedMove = playedBoard.move(game.moves[index]);
+      const offers = sacrificeOffers(game.positions[index], playedMove.lan);
+      if (workingDepth < 14 && (rawLoss >= 100 || volatileMate || offers.length)) {
         workingDepth = 14;
         before = await analyzePosition(game.positions[index], { depth: workingDepth, signal: options.signal });
         after = await analyzePosition(game.positions[index + 1], { depth: workingDepth, signal: options.signal });
       }
       const facts = factsForMove(game, index + 1, before, after);
+      const sacrificeEvidence = facts.loss <= 15 ? await verifySacrifice(game.positions[index + 1], offers, after, analyzePosition, options.signal) : undefined;
+      facts.sacrifice = !!sacrificeEvidence;
       const decision = options.classify ? await options.classify(facts) : classify(facts);
       const label = typeof decision === 'string' ? decision : decision.label;
       if (!(label in LABEL_INFO)) throw new Error('The review policy returned an unknown move label.');
@@ -153,7 +137,7 @@ export async function analyzeGame(game: Game, options: AnalyzeOptions = {}): Pro
         before: before.score, after: after.score, loss: facts.loss, label,
         best: before.best, pv: before.pv, depth: Math.min(before.depth, after.depth),
         explanation: '', hints: [], key: typeof decision === 'string' ? ['sacrifice', 'great', 'inaccuracy', 'mistake', 'blunder', 'miss'].includes(label) : decision.key,
-        facts, mate: after.mate, replyPv: after.pv,
+        facts, mate: after.mate, replyPv: after.pv, sacrificeEvidence,
       };
       Object.assign(result, explanationFor(game, result, after, typeof decision !== 'string' ? decision.hint : undefined));
       const grouped = groupForcedConsequence(game, result, results);

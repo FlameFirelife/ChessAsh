@@ -5,7 +5,11 @@ import { Capacitor, CapacitorHttp } from '@capacitor/core';
 interface CachedResponse { expires: number; value: unknown; }
 const responseCache = new Map<string, CachedResponse>();
 
-async function api<T>(url: string): Promise<T> {
+async function requestApi<T>(url: string): Promise<T> {
+  const lichess = new URL(url).hostname === 'lichess.org';
+  const provider = lichess ? 'Lichess' : 'Chess.com';
+  const ndjson = lichess && new URL(url).pathname.startsWith('/api/games/user/');
+  const accept = ndjson ? 'application/x-ndjson' : 'application/json';
   const cached = responseCache.get(url);
   if (cached && cached.expires > Date.now()) return cached.value as T;
   const desktop = (globalThis as unknown as { chessash?: { apiFetch?: (url: string) => Promise<unknown> } }).chessash;
@@ -15,24 +19,31 @@ async function api<T>(url: string): Promise<T> {
     return value as T;
   }
   if (Capacitor.isNativePlatform()) {
-    const nativeResponse = await CapacitorHttp.get({ url, headers: { Accept: 'application/json' }, connectTimeout: 30000, readTimeout: 30000 });
-    if (nativeResponse.status !== 200) throw new Error(`Chess.com returned ${nativeResponse.status}. Try later or import PGN.`);
+    const nativeResponse = await CapacitorHttp.get({ url, headers: { Accept: accept }, responseType: ndjson ? 'text' : 'json', connectTimeout: 30000, readTimeout: 60000 });
+    if (nativeResponse.status !== 200) throw new Error(`${provider} returned ${nativeResponse.status}. Try later or import PGN.`);
     const value = nativeResponse.data;
     const cacheControl = Object.entries(nativeResponse.headers).find(([key]) => key.toLowerCase() === 'cache-control')?.[1];
     const maxAge = Number(cacheControl?.match(/max-age=(\d+)/)?.[1] || 60);
     responseCache.set(url, { expires: Date.now() + maxAge * 1000, value });
     return value as T;
   }
-  const response = await fetch(url, { headers: { Accept: 'application/json' } });
+  const response = await fetch(url, { headers: { Accept: accept }, redirect: 'error', signal: AbortSignal.timeout(60000) });
   if (!response.ok) {
-    if (response.status === 404) throw new Error('Chess.com could not find this username or game archive.');
-    if (response.status === 429) throw new Error('Chess.com is limiting requests. Wait a few minutes and try again.');
-    throw new Error(`Chess.com returned ${response.status}. Try again later or import a PGN.`);
+    if (response.status === 404) throw new Error(`${provider} could not find this username or game archive.`);
+    if (response.status === 429) throw new Error(`${provider} is limiting requests. Wait a few minutes and try again.`);
+    throw new Error(`${provider} returned ${response.status}. Try again later or import a PGN.`);
   }
-  const value = await response.json();
+  const value = ndjson ? await response.text() : await response.json();
   const maxAge = Number(response.headers.get('Cache-Control')?.match(/max-age=(\d+)/)?.[1] || 60);
   responseCache.set(url, { expires: Date.now() + maxAge * 1000, value });
   return value as T;
+}
+let lichessQueue: Promise<unknown> = Promise.resolve();
+function api<T>(url: string): Promise<T> {
+  if (new URL(url).hostname !== 'lichess.org') return requestApi<T>(url);
+  const result = lichessQueue.then(() => requestApi<T>(url));
+  lichessQueue = result.catch(() => {});
+  return result;
 }
 
 export async function importChessCom(username: string, onProgress?: (message: string) => void, months = 3): Promise<Game[]> {
@@ -59,5 +70,49 @@ export async function importChessCom(username: string, onProgress?: (message: st
     games = mergeGames(games, incoming);
   }
   if (!games.length) throw new Error('No completed standard chess games were found in these archives. You can import a PGN instead.');
+  return games;
+}
+
+export function lichessGameId(link: string): string {
+  const parsed = new URL(link.trim());
+  const match = parsed.pathname.match(/^\/(?:game\/)?([a-z0-9]{8})(?:[a-z0-9]{4})?(?:\/(?:white|black))?\/?$/i);
+  if (parsed.protocol !== 'https:' || !['lichess.org', 'www.lichess.org'].includes(parsed.hostname) || parsed.username || parsed.password || parsed.port || !match) throw new Error('Enter a valid Lichess game link.');
+  return match[1];
+}
+type LichessRecord = { id?: string; pgn?: string; variant?: string; status?: string; speed?: string };
+export function parseLichessGames(data: unknown): Game[] {
+  if (typeof data === 'string' && data.length > 8_000_000) throw new Error('Lichess response is too large. Import a smaller range.');
+  const records: LichessRecord[] = typeof data === 'string' ? data.split(/\r?\n/).filter(line => line.trim()).map(line => JSON.parse(line)) : [data as LichessRecord];
+  if (records.length > 300) throw new Error('Lichess returned too many games.');
+  const games: Game[] = [];
+  for (const record of records) {
+    if (!record || typeof record.pgn !== 'string' || (record.variant && record.variant !== 'standard') || ['created', 'started', 'aborted', 'noStart'].includes(record.status || '')) continue;
+    try {
+      const game = parsePgn(record.pgn, 'Lichess');
+      if (!['1-0', '0-1', '1/2-1/2'].includes(game.headers.Result)) continue;
+      const id = lichessGameId(game.headers.Site || game.headers.Link || '');
+      if (record.id && record.id !== id) continue;
+      game.id = `lichess:${id}`; game.url = `https://lichess.org/${id}`; game.timeClass = record.speed;
+      games.push(game);
+    } catch {}
+  }
+  return mergeGames([], games);
+}
+export async function importLichess(username: string, onProgress?: (message: string) => void, months = 3, link = ''): Promise<Game[]> {
+  let url: string;
+  if (link.trim()) {
+    const id = lichessGameId(link);
+    onProgress?.('Fetching finished Lichess game…');
+    url = `https://lichess.org/game/export/${id}?pgnInJson=true&moves=true&evals=false&clocks=false`;
+  } else {
+    const name = username.trim().toLowerCase();
+    if (!/^[a-z0-9_-]{2,30}$/.test(name)) throw new Error('Enter a valid Lichess username.');
+    const since = new Date(); since.setUTCMonth(since.getUTCMonth() - Math.max(1, Math.min(24, months)));
+    onProgress?.('Fetching finished Lichess games…');
+    const params = new URLSearchParams({ max: '300', since: String(since.getTime()), ongoing: 'false', finished: 'true', pgnInJson: 'true', moves: 'true', evals: 'false', clocks: 'false', perfType: 'ultraBullet,bullet,blitz,rapid,classical,correspondence' });
+    url = `https://lichess.org/api/games/user/${encodeURIComponent(name)}?${params}`;
+  }
+  const games = parseLichessGames(await api<unknown>(url));
+  if (!games.length) throw new Error('No completed standard Lichess games were found. You can import a PGN instead.');
   return games;
 }

@@ -19,6 +19,8 @@ describe('Foxash review policy', () => {
     }
     fixtures.push(facts({ book: true, loss: 300 }));
     fixtures.push(facts({ playedBest: true, sacrifice: true, verified: true }));
+    fixtures.push(facts({ playedBest: false, sacrifice: true, verified: true, loss: 15, critical: true }));
+    fixtures.push(facts({ playedBest: false, sacrifice: true, verified: true, loss: 16 }));
     fixtures.push(facts({ playedBest: true, sacrifice: true, verified: false }));
     fixtures.push(facts({ playedBest: true, critical: true, verified: true }));
     const output = await policy.reviewFacts(fixtures, root);

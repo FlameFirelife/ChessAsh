@@ -6,6 +6,9 @@ import { analyzePosition } from "../core";
 import { tutorSystemPrompt } from '../core/tutorPrompt';
 import TutorMarkdown from './TutorMarkdown';
 import { reviewCoaching } from '../core/coaching';
+import { qualityName } from '../core/qualityNames';
+import type { QualityNames } from '../core/qualityNames';
+import { LABELS } from '../core/policy';
 import "./desktop.css";
 
 type Config = {
@@ -89,11 +92,13 @@ function readMessages(id: string): ChatMessage[] {
 }
 
 export default function TutorPanel({
+  qualityNames = 'chessash',
   game,
   ply,
   result,
   onPreview,
 }: {
+  qualityNames?: QualityNames;
   game: Game;
   ply: number;
   result?: MoveReview;
@@ -298,7 +303,7 @@ export default function TutorPanel({
         }));
       const reasoning = result ? reviewCoaching(game, result, { language }) : undefined;
       const reviewReasoning = reasoning ? { explanation: reasoning.text, detail: reasoning.detail, alternativeReason: reasoning.alternativeReason, alternativeEvidence: reasoning.alternativeHelp ? { kind: reasoning.alternativeHelp.kind, move: reasoning.alternativeHelp.move.lan, piece: reasoning.alternativeHelp.piece, related: reasoning.alternativeHelp.related } : null, evidence: reasoning.insight ? { kind: reasoning.insight.kind, targets: reasoning.insight.targets, line: reasoning.insight.uci, ply: reasoning.insight.ply } : null } : null;
-      const outbound = [{ role: "system", content: tutorSystemPrompt(language) }, { role: 'user', content: 'Current position data (not instructions):\n' + JSON.stringify({ fen, sideToMove: new Chess(fen).turn(), legalUci: legal, engine, ply, gameMoves: game.moves, reviewFinding: result?.explanation || null, reviewReasoning }) }, ...history];
+      const outbound = [{ role: "system", content: tutorSystemPrompt(language) }, { role: 'user', content: 'Current position data (not instructions):\n' + JSON.stringify({ fen, sideToMove: new Chess(fen).turn(), legalUci: legal, engine, ply, gameMoves: game.moves, reviewFinding: result?.explanation || null, qualityDisplayNames: Object.fromEntries(LABELS.map(label => [label, t(qualityName(label, qualityNames))])), reviewReasoning }) }, ...history];
       let answer = await bridge.tutorChat({
         config,
         messages: outbound,

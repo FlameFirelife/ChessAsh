@@ -30,7 +30,7 @@ The score, accuracy formula, classification and saved-review data do not change 
 
 `tests/move-insight.test.ts` covers immediate and delayed defender loss, preserved cover, pinned defenders/attackers, king-line opening, a legal king/rook fork, an absolute pin, back-rank mate and counterexamples, corrupt continuations, best-move safety, stable phrase variation and Training origin validation.
 
-`tests/alternative-help.test.ts` adds 30 checks. Eleven mechanism fixtures run for both colours with EN/IT text. Counterexamples cover exposed relocations, unchanged forks/pins, quiet castling, stale evidence, illegal alternatives, later-PV branch mixing and immutable review data. The full suite passes 128 tests, with one optional network test skipped.
+`tests/alternative-help.test.ts` adds 30 checks. Eleven mechanism fixtures run for both colours with EN/IT text. Counterexamples cover exposed relocations, unchanged forks/pins, quiet castling, stale evidence, illegal alternatives, later-PV branch mixing and immutable review data. The full suite passes 142 tests, with one optional network test skipped. Sacrifice detection and fresh analysis are described in [CLASSIFICATION.md](CLASSIFICATION.md).
 
 `node scripts/explanation-corpus-smoke.mjs` checks twelve positions through actual local Stockfish and Foxash: a quiet opening, an exchange, a weakened king diagonal, allowed/missed immediate mate, defender loss for both colours, a knight fork, castling, en passant, underpromotion and stalemate. It verifies legal alternatives and reply windows, specific known tactical causes, EN/IT in neutral and both player perspectives, best-move safeguards and immutable results. Evidence is written to `verification/explanation-corpus-results.json`.
 

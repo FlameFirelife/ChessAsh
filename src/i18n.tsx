@@ -4,6 +4,26 @@ import type { ReactNode } from 'react';
 export type Language = 'en' | 'it';
 type Parameters = Record<string, string | number>;
 const italian: Record<string, string> = Object.fromEntries(`
+Move-quality names|Nomi delle qualità delle mosse
+Date range|Intervallo di date
+Choose your main account first.|Scegli prima il tuo account principale.
+Brilliant|Brillante
+Great|Grande mossa
+Book|Apertura
+Miss|Occasione mancata
+Game source|Origine delle partite
+Lichess username|Nome utente Lichess
+Lichess games|Partite Lichess
+Use a public Lichess username or game link. No password needed.|Usa un nome utente pubblico Lichess o il link di una partita. Non serve una password.
+Fetching finished Lichess game…|Recupero della partita conclusa su Lichess…
+Fetching finished Lichess games…|Recupero delle partite concluse su Lichess…
+Imports up to 300 finished standard games from the selected range.|Importa fino a 300 partite standard concluse nell’intervallo selezionato.
+Enter a valid Lichess username.|Inserisci un nome utente Lichess valido.
+Enter a valid username.|Inserisci un nome utente valido.
+Enter a valid Lichess game link.|Inserisci un link valido a una partita Lichess.
+No completed standard Lichess games were found. You can import a PGN instead.|Nessuna partita standard conclusa trovata su Lichess. Puoi importare un PGN.
+The selected game does not include this Lichess player.|Il giocatore Lichess indicato non partecipa alla partita selezionata.
+
 Played position · blue shows the best alternative; red shows the reply.|Posizione giocata · il blu mostra l’alternativa migliore, il rosso la risposta.
 Blue: best alternative. Focus a square in the explanation to see the reply.|Blu: alternativa migliore. Seleziona una casa nella spiegazione per vedere la risposta.
 Review as|Rivedi come
@@ -363,6 +383,8 @@ No more matching key moments.|Non ci sono altri momenti decisivi con questi filt
 `.trim().split('\n').map(line => { const at = line.indexOf('|'); return [line.slice(0, at), line.slice(at + 1)]; }));
 
 const patterns: [RegExp, (match: RegExpMatchArray) => string][] = [
+  [/^Lichess returned (\d+)\..*$/, m => `Lichess ha restituito l’errore ${m[1]}. Riprova più tardi o importa un PGN.`],
+
   [/^Evaluation (.+)$/, m => `Valutazione ${m[1]}`],
   [/^Imported (\d+) games?\.$/, m => `Importat${m[1] === '1' ? 'a' : 'e'} ${m[1]} partit${m[1] === '1' ? 'a' : 'e'}.`],
   [/^Model server returned HTTP (\d+)\..*$/, m => `Il server dei modelli ha restituito l’errore HTTP ${m[1]}. Controlla l’indirizzo e le credenziali.`],

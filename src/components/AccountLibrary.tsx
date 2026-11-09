@@ -5,6 +5,7 @@ import type { Game } from '../core/types';
 import { openingName } from '../core/openings';
 import { groupAccountGames } from '../accounts/model';
 import type { AccountGroup } from '../accounts/model';
+import { accountTitle } from '../core/accountIdentity';
 import '../accounts/accounts.css';
 
 export interface AccountLibraryProps {
@@ -30,7 +31,7 @@ function Group({ group, mainUsername, onMainUsernameChange, onOpen, onDelete, qu
     return text.includes(query.toLowerCase()) && (status === 'all' || (status === 'reviewed' ? game.review?.completed : !game.review?.completed)) && (result === 'all' || game.headers.Result === result) && (time === 'all' || game.timeClass === time);
   });
   const expanded = open || !!query || status !== 'all' || result !== 'all' || time !== 'all';
-  return <section className={`account-container account-${group.kind}`} aria-label={group.username ? t(`Games imported for ${group.username}`) : t(group.title)}>
+  return <section className={`account-container account-${group.kind}`} aria-label={group.username ? t(`Games imported for ${group.title}`) : t(group.title)}>
     <header className="account-heading">
       <button className="account-toggle" aria-expanded={expanded} aria-controls={`account-games-${group.id}`} onClick={() => setOpen(value => !value)}>
         <span className="account-avatar">{group.kind === 'main' ? <Star size={22} /> : group.username ? <UserRound size={22} /> : <FolderOpen size={22} />}</span>
@@ -61,7 +62,7 @@ export default function AccountLibrary({ games, mainUsername, onMainUsernameChan
     <div className="page-heading"><div><h1>{t("Your library")}</h1><p>{t("Your games and the players you follow, kept apart.")}</p></div><button className="primary" onClick={onImport}><Plus size={18} />{t("Import games")}</button></div>
     <div className="account-sync-strip">
       <CloudDownload size={22} />
-      {mainUsername ? <><div><strong>{mainUsername}</strong><span>{syncing ? t("Checking for new games…") : lastSynced ? t(`Last checked ${new Date(lastSynced).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`) : t("Ready to check for new games")}<small>{t("Syncs while ChessAsh is open. Public archives can be delayed.")}</small></span></div><button onClick={() => void onSync()} disabled={syncing}><RefreshCw size={16} className={syncing ? 'account-refresh spinning' : 'account-refresh'} />{syncing ? t("Syncing…") : t("Check now")}</button></> : <><div><strong>{t("Keep your own games up to date")}</strong><span>{t("Choose your main Chess.com username.")}</span></div><form onSubmit={event => { event.preventDefault(); onMainUsernameChange(mainDraft); }}><input aria-label={t("Main Chess.com username")} value={mainDraft} onChange={event => setMainDraft(event.target.value)} placeholder={t("Your username")} autoComplete="off" /><button className="primary" disabled={!mainDraft.trim()}>{t("Set main account")}</button></form></>}
+      {mainUsername ? <><div><strong>{accountTitle(mainUsername)}</strong><span>{syncing ? t("Checking for new games…") : lastSynced ? t(`Last checked ${new Date(lastSynced).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`) : t("Ready to check for new games")}<small>{t("Syncs while ChessAsh is open. Public archives can be delayed.")}</small></span></div><button onClick={() => void onSync()} disabled={syncing}><RefreshCw size={16} className={syncing ? 'account-refresh spinning' : 'account-refresh'} />{syncing ? t("Syncing…") : t("Check now")}</button></> : <><div><strong>{t("Keep your own games up to date")}</strong><span>{t("Choose your main Chess.com username.")}</span></div><form onSubmit={event => { event.preventDefault(); onMainUsernameChange(mainDraft); }}><input aria-label={t("Main Chess.com username")} value={mainDraft} onChange={event => setMainDraft(event.target.value)} placeholder={t("Your username")} autoComplete="off" /><button className="primary" disabled={!mainDraft.trim()}>{t("Set main account")}</button></form></>}
     </div>
     {syncError && <p className="account-sync-error" role="status">{t(syncError)} {t("Your saved games are still available.")}</p>}
     <div className="library-filters"><label className="search"><Search size={17} /><input aria-label={t("Search saved games")} placeholder={t("Search player, opening or date")} value={query} onChange={event => setQuery(event.target.value)} /></label><select aria-label={t("Review status")} value={status} onChange={event => setStatus(event.target.value)}><option value="all">{t("All games")}</option><option value="reviewed">{t("Reviewed")}</option><option value="unreviewed">{t("To review")}</option></select><select aria-label={t("Game result")} value={result} onChange={event => setResult(event.target.value)}><option value="all">{t("Any result")}</option><option>1-0</option><option>0-1</option><option>1/2-1/2</option></select><select aria-label={t("Time control")} value={time} onChange={event => setTime(event.target.value)}><option value="all">{t("Any time control")}</option>{['bullet', 'blitz', 'rapid', 'daily'].map(control => <option key={control} value={control}>{t(control)}</option>)}</select></div>

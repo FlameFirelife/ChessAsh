@@ -14,11 +14,11 @@ export const LABEL_INFO: Record<Label, { name: string; symbol: string; descripti
   sacrifice: { name: 'Sound sacrifice', symbol: '!!', description: 'An engine-checked material investment with compensation.' },
 };
 
-export const POLICY_VERSION = 1;
+export const POLICY_VERSION = 2;
 
 export function classify(facts: ReviewFacts): Label {
   if (facts.book) return 'book';
-  if (facts.verified && facts.sacrifice && facts.playedBest && facts.loss <= 15) return 'sacrifice';
+  if (facts.verified && facts.sacrifice && facts.loss <= 15) return 'sacrifice';
   if (facts.verified && facts.critical && facts.playedBest && facts.loss <= 15) return 'great';
   if (facts.loss >= 250) return 'blunder';
   if (facts.missedChance && facts.loss >= 100) return 'miss';

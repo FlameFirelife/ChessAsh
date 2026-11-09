@@ -1,9 +1,17 @@
+import ShareReview from './components/ShareReview';
+import QualityIcon from './components/QualityIcon';
+import { accountKey, accountTitle } from './core/accountIdentity';
+import type { GameProvider } from './core/accountIdentity';
+import { importLichess } from './core/importer';
+import { qualityName } from './core/qualityNames';
+import type { QualityNames } from './core/qualityNames';
 import { useLanguage } from "./i18n";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Chess } from "chess.js";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import FoxashPanel from "./desktop/FoxashPanel";
 import {
+  Share2,
   BookOpen,
   ChevronLeft,
   ChevronRight,
@@ -56,6 +64,7 @@ import {
   openingName,
   LABELS,
   LABEL_INFO,
+  POLICY_VERSION,
   exportPgn,
   variationSan,
   phaseAt,
@@ -79,6 +88,7 @@ const DEMO = `[Event "Opera game (sample)"]
 
 1. e4 e5 2. Nf3 d6 3. d4 Bg4 4. dxe5 Bxf3 5. Qxf3 dxe5 6. Bc4 Nf6 7. Qb3 Qe7 8. Nc3 c6 9. Bg5 b5 10. Nxb5 cxb5 11. Bxb5+ Nbd7 12. O-O-O Rd8 13. Rxd7 Rxd7 14. Rd1 Qe6 15. Bxd7+ Nxd7 16. Qb8+ Nxb8 17. Rd8# 1-0`;
 type Prefs = {
+  qualityNames: QualityNames;
   depth: number;
   theme: string;
   reduced: boolean;
@@ -89,6 +99,7 @@ type Prefs = {
   advanced: boolean;
 };
 const defaults: Prefs = {
+  qualityNames: "chessash",
   depth: 12,
   theme: "dark",
   reduced: false,
@@ -113,9 +124,9 @@ const cp = (n: number, t: (key: string) => string) =>
     ? (n > 0 ? t("White") : t("Black")) + " " + t("mating")
     : (n > 0 ? "+" : "") + (n / 100).toFixed(2);
 const err = (e: unknown) => (e instanceof Error ? e.message : String(e));
-const badge = (r: MoveReview, t: (key: string) => string) => (
-  <span className={`badge label-${r.label}`} title={t(LABEL_INFO[r.label].name)}>
-    {LABEL_INFO[r.label].symbol}
+const badge = (r: MoveReview, t: (key: string) => string, qualityNames: QualityNames) => (
+  <span className={`badge label-${r.label}`} title={t(qualityName(r.label, qualityNames))}>
+    <QualityIcon label={r.label} size={16} />
   </span>
 );
 async function download(name: string, text: string) {
@@ -140,6 +151,7 @@ async function download(name: string, text: string) {
 }
 
 export default function App() {
+  const [sharingReview, setSharingReview] = useState(false);
   useButtonFeedback();
   const { language, setLanguage, t } = useLanguage();
   useLayoutEffect(() => {
@@ -184,6 +196,7 @@ export default function App() {
   const [variationAttempt, setVariationAttempt] = useState(0);
   const [practice, setPractice] = useState<{ game: Game; result: MoveReview } | null>(null);
   const variationCache = useRef(new Map<string, { game: Game; result: MoveReview }>());
+  const [importProvider, setImportProvider] = useState<GameProvider>(localStorage.getItem("chessash:import-provider") === "lichess" ? "lichess" : "chesscom");
   const [username, setUsername] = useState(
       localStorage.getItem("chessash:username") || "",
     ),
@@ -375,7 +388,7 @@ export default function App() {
   useEffect(() => {
     function key(e: KeyboardEvent) {
       if (
-        screen !== "board" || dialog ||
+        screen !== "board" || dialog || sharingReview ||
         ["INPUT", "TEXTAREA", "SELECT"].includes(
           (e.target as HTMLElement).tagName,
         )
@@ -398,7 +411,7 @@ export default function App() {
     }
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [ply, game, dialog, branch, branchIndex, screen]);
+  }, [ply, game, dialog, sharingReview, branch, branchIndex, screen]);
   useEffect(() => {
     const stop = () => {
       if (document.hidden && Capacitor.isNativePlatform()) {
@@ -459,14 +472,14 @@ export default function App() {
   async function importAccount() {
     setError("");
     setImporting(true);
-    localStorage.setItem("chessash:username", username.trim());
+    if (importProvider === "chesscom") localStorage.setItem("chessash:username", username.trim());
+    localStorage.setItem("chessash:import-provider", importProvider);
     try {
-      let list = await accounts.importAccount(
-        username.trim(),
-        months,
-        setImportStatus,
-      );
-      if (gameLink.trim()) {
+      const key = accountKey(username, importProvider);
+      let list = importProvider === 'lichess' && !username.trim()
+        ? await importLichess('', setImportStatus, months, gameLink)
+        : await accounts.importAccount(key, months, setImportStatus, importProvider === 'lichess' ? gameLink : '');
+      if (importProvider === "chesscom" && gameLink.trim()) {
         const id = gameLink.match(/\/(\d+)(?:[/?#]|$)/)?.[1];
         list = list.filter((g) =>
           (g.url || g.headers.Link || "").includes("/" + id),
@@ -476,7 +489,7 @@ export default function App() {
             "That game was not found in the fetched archives. Increase archive range or import its PGN.",
           );
       }
-      if (useAsMain) accounts.setMainUsername(username.trim());
+      if (useAsMain && username.trim()) accounts.setMainUsername(key);
       addGames(list);
     } catch (e) {
       setError(err(e));
@@ -486,24 +499,28 @@ export default function App() {
     }
   }
   async function runReview() {
+    const fresh = !!game?.review?.completed;
+    const resume = !fresh && game?.review?.version === POLICY_VERSION && game.review.depth === prefs.depth;
     if (!game || busy) return;
     positionAbort.current?.abort();
+    if (fresh) { variationCache.current.clear(); setVariationState({ key: "" }); }
     const id = game.id;
     const controller = new AbortController();
     abort.current = controller;
     setBusy(true);
     setError("");
     setProgress([
-      game.review?.depth === prefs.depth ? results.length : 0,
+      resume ? results.length : 0,
       game.moves.length,
     ]);
     let draft: MoveReview[] =
-      game.review?.depth === prefs.depth ? [...results] : [];
+      resume ? [...results] : [];
     try {
       const review = await analyzeGame(game, {
         depth: prefs.depth,
         signal: controller.signal,
         existing: game.review,
+        fresh,
         onProgress: (done, total) => setProgress([done, total]),
         onResult: (r) => {
           draft = [...draft.filter((x) => x.ply !== r.ply), r].sort(
@@ -511,7 +528,7 @@ export default function App() {
           );
           updateGame(id, {
             review: {
-              version: 1,
+              version: POLICY_VERSION,
               engine: ENGINE_VERSION,
               depth: prefs.depth,
               results: [...draft],
@@ -820,13 +837,15 @@ export default function App() {
                     {t(openingName(game.moves))}
                   </span>
                   <h1>{game.headers.Event || "Game review"}</h1>
+
                 </div>
+                {!!game.review?.results.length && <button className="icon-button" title={language === 'it' ? 'Condividi revisione' : 'Share review'} aria-label={language === 'it' ? 'Condividi revisione' : 'Share review'} onClick={() => setSharingReview(true)}><Share2 size={19} /></button>}
                 <button
                   className="icon-button"
                   title={t("Export annotated PGN")}
                   aria-label={t("Export annotated PGN")}
                   onClick={() => {
-                    void download(`ChessAsh-${game.id}.pgn`, exportPgn(game))
+                    void download(`ChessAsh-${game.id}.pgn`, exportPgn(game, prefs.qualityNames))
                       .then((saved) => {
                         if (saved) setNotice("PGN exported.");
                       })
@@ -847,6 +866,7 @@ export default function App() {
               <div className="review-message-slot">
               {view === "review" ? (
                 <ReviewMessage
+                  qualityNames={prefs.qualityNames}
                   language={language}
                   moveNumber={coachGame && coachResult ? Number(coachGame.positions[coachResult.ply - 1].split(' ')[5]) : undefined}
                   onSquare={setFocusedSquare}
@@ -941,7 +961,7 @@ export default function App() {
                       ? {
                           square: coachResult.move.slice(2, 4),
                           label: coachResult.label,
-                          name: t(LABEL_INFO[coachResult.label].name),
+                          name: t(qualityName(coachResult.label, prefs.qualityNames)),
                           key: game.id + ":" + effectiveFen,
                         }
                       : undefined
@@ -1094,6 +1114,7 @@ export default function App() {
               </div>
               {view === "tutor" ? (
                 <TutorPanel
+                  qualityNames={prefs.qualityNames}
                   game={game}
                   ply={ply}
                   result={current}
@@ -1156,6 +1177,7 @@ export default function App() {
                     />
                   </label>
                   <MoveList
+                      qualityNames={prefs.qualityNames}
                     game={game}
                     ply={ply}
                     onSelect={(n) => {
@@ -1260,9 +1282,9 @@ export default function App() {
                               }}
                             >
                               <span className={`badge label-${label}`}>
-                                {LABEL_INFO[label].symbol}
+                                <QualityIcon label={label} size={16} />
                               </span>
-                              <span>{t(LABEL_INFO[label].name)}</span>
+                              <span>{t(qualityName(label, prefs.qualityNames))}</span>
                               <b>
                                 {
                                   results.filter(
@@ -1312,7 +1334,7 @@ export default function App() {
                                 setPly(r.ply);
                               }}
                             >
-                              {badge(r, t)}
+                              {badge(r, t, prefs.qualityNames)}
                               <span>
                                 {Math.ceil(r.ply / 2)}
                                 {r.color === "b" ? "…" : "."} {r.san}
@@ -1364,6 +1386,7 @@ export default function App() {
                       {t("All moves")}<span>{game.moves.length} {t("moves")}</span>
                     </summary>
                     <MoveList
+                      qualityNames={prefs.qualityNames}
                       game={game}
                       ply={ply}
                       onSelect={(n) => {
@@ -1383,6 +1406,7 @@ export default function App() {
         <span>{t("ChessAsh by FlameDev")}</span>
         <span>{t("Reviews saved on this device.")}</span>
       </footer>
+      {sharingReview && game && <ShareReview game={game} color={playerColor} names={prefs.qualityNames} onClose={() => setSharingReview(false)} />}
       {dialog && (
         <div
           className="modal-backdrop"
@@ -1411,9 +1435,10 @@ export default function App() {
             </div>
             {dialog === "import" ? (
               <>
-                <p>{t("Use your public Chess.com username. No password needed.")}</p>
+                <label>{t("Game source")}<select aria-label={t("Game source")} value={importProvider} disabled={importing} onChange={e => { setImportProvider(e.target.value as GameProvider); setUsername(''); setGameLink(''); }}><option value="chesscom">Chess.com</option><option value="lichess">Lichess</option></select></label>
+                <p>{t(importProvider === 'lichess' ? "Use a public Lichess username or game link. No password needed." : "Use your public Chess.com username. No password needed.")}</p>
                 <label>
-                  {t("Chess.com username")}<input
+                  {t(importProvider === "lichess" ? "Lichess username" : "Chess.com username")}<input
                     autoFocus
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -1430,12 +1455,12 @@ export default function App() {
                   {t("This is my account. Keep it synced.")}</label>
                 {accounts.mainUsername && !useAsMain && (
                   <p className="quiet">
-                    {t("These games will have their own collection. Your main account stays")}{accounts.mainUsername}.
+                    {t("These games will have their own collection. Your main account stays")}{accountTitle(accounts.mainUsername)}.
                   </p>
                 )}
                 <div className="import-options">
                   <label>
-                    {t("Archives")}<select
+                    {t(importProvider === 'lichess' ? 'Date range' : 'Archives')}<select
                       value={months}
                       onChange={(e) => setMonths(Number(e.target.value))}
                     >
@@ -1450,13 +1475,13 @@ export default function App() {
                     {t("Specific game link (optional)")}<input
                       value={gameLink}
                       onChange={(e) => setGameLink(e.target.value)}
-                      placeholder="https://www.chess.com/game/live/…"
+                      placeholder={importProvider === "lichess" ? "https://lichess.org/…" : "https://www.chess.com/game/live/…"}
                     />
                   </label>
                 </div>
                 <button
                   className="primary"
-                  disabled={!username.trim() || importing}
+                  disabled={(!username.trim() && !(importProvider === "lichess" && gameLink.trim())) || importing}
                   onClick={() => void importAccount()}
                 >
                   {importing
@@ -1464,7 +1489,7 @@ export default function App() {
                     : t("Fetch finished games")}
                 </button>
                 <p className="quiet">
-                  {t("New games may take time to appear in Chess.com’s public archives.")}</p>
+                  {t(importProvider === "lichess" ? "Imports up to 300 finished standard games from the selected range." : "New games may take time to appear in Chess.com’s public archives.")}</p>
                 <div className="divider">{t("Or import a PGN")}</div>
                 <label className="file-input">
                   <FolderOpen size={17} />
@@ -1513,6 +1538,11 @@ export default function App() {
               <>
                 <label>
                   {t("Language")}<select id="app-language" aria-label={t("Language")} value={language} onChange={e => setLanguage(e.target.value as "en" | "it")}><option value="en">English</option><option value="it">Italiano</option></select>
+                </label>
+                <label>
+                  {t("Move-quality names")}<select aria-label={t("Move-quality names")} value={prefs.qualityNames} onChange={e => setPrefs({ ...prefs, qualityNames: e.target.value as QualityNames })}>
+                    <option value="chessash">ChessAsh</option><option value="chesscom">Chess.com</option>
+                  </select>
                 </label>
                 <label>
                   {t("Appearance")}<select
@@ -1595,7 +1625,7 @@ export default function App() {
                         if (!game?.review) return;
                         const review = await analyzeGame(game, {
                           depth: game.review.depth,
-                          existing: game.review,
+                          existing: { ...game.review, version: POLICY_VERSION },
                           classify: async (facts) =>
                             (await window.chessash!.reviewFacts([facts]))[0],
                         });
@@ -1623,11 +1653,13 @@ export default function App() {
 }
 
 function MoveList({
+  qualityNames,
   game,
   ply,
   onSelect,
   filter,
 }: {
+  qualityNames: QualityNames;
   game: Game;
   ply: number;
   onSelect: (n: number) => void;
@@ -1700,7 +1732,7 @@ function MoveList({
         <h2>{t("Moves")}</h2>
         <span>
           {filter !== "all" && filter in LABEL_INFO
-            ? t(LABEL_INFO[filter as Label].name)
+            ? t(qualityName(filter as Label, qualityNames))
             : t("Complete game")}
         </span>
       </div>
@@ -1720,7 +1752,7 @@ function MoveList({
                   onClick={() => onSelect(n + 1)}
                 >
                   <span>{game.moves[n]}</span>
-                  {r && badge(r, t)}
+                  {r && badge(r, t, qualityNames)}
                 </button>
               );
             })}

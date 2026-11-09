@@ -1,12 +1,9 @@
 import { Play, ChevronRight, RotateCcw } from "lucide-react";
 import type { MoveReview } from "../core";
-import { LABEL_INFO } from "../core";
 import QualityIcon from "./QualityIcon";
-
-const italianLabels: Record<MoveReview['label'], string> = {
-  book: "Apertura", best: "Migliore", excellent: "Eccellente", good: "Buona", inaccuracy: "Imprecisione",
-  mistake: "Errore", blunder: "Grave errore", miss: "Occasione mancata", great: "Mossa decisiva", sacrifice: "Sacrificio corretto",
-};
+import { qualityName } from '../core/qualityNames';
+import type { QualityNames } from '../core/qualityNames';
+import { translate } from '../i18n';
 
 function SuperKing() {
   return <img src={new URL("coach/super-king.svg", document.baseURI).href} alt="" />;
@@ -18,6 +15,7 @@ export default function ReviewMessage({
   detail,
   expandedDetail,
   language = "en",
+  qualityNames = 'chessash',
   moveNumber,
   retryText,
   retry,
@@ -34,6 +32,7 @@ export default function ReviewMessage({
   detail?: string;
   expandedDetail?: string;
   language?: "en" | "it";
+  qualityNames?: QualityNames;
   moveNumber?: number;
   retryText: string;
   retry: boolean;
@@ -61,7 +60,7 @@ export default function ReviewMessage({
             <span key={`${result.ply}:${result.move}:${result.label}`} className={`message-quality quality-${result.label}`}>
               <QualityIcon label={result.label} size={15} />
               {moveNumber || Math.ceil(result.ply / 2)}{result.color === "b" ? "…" : "."} {result.san}{" "}
-              <span>{it ? italianLabels[result.label] : LABEL_INFO[result.label].name}</span>
+              <span>{translate(language, qualityName(result.label, qualityNames))}</span>
             </span>
           )}
         </div>

@@ -14,7 +14,7 @@ define sacrifices = 0
 
 function classify(move, rules) {
     when move["book"] { give "book" }
-    when move["verified"] and move["sacrifice"] and move["playedBest"] and move["loss"] <= rules["excellent"] { give "sacrifice" }
+    when move["verified"] and move["sacrifice"] and move["loss"] <= rules["excellent"] { give "sacrifice" }
     when move["verified"] and move["critical"] and move["playedBest"] and move["loss"] <= rules["excellent"] { give "great" }
     when move["loss"] >= rules["blunder"] { give "blunder" }
     when move["missedChance"] and move["loss"] >= rules["mistake"] { give "miss" }

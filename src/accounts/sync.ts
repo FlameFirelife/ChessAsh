@@ -30,7 +30,7 @@ export class AccountSyncCoordinator {
   }
   sync(username: string, options: { manual?: boolean; eligible?: boolean } = {}): Promise<Game[]> {
     const name = normaliseUsername(username);
-    if (!validUsername(name)) return Promise.reject(new Error('Choose your main Chess.com username first.'));
+    if (!validUsername(name)) return Promise.reject(new Error('Choose your main account first.'));
     const state = this.snapshot(name);
     if (options.eligible === false) return Promise.resolve([]);
     if (this.pending.has(name)) return this.pending.get(name)!;

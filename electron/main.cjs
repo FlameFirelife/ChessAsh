@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, safeStorage, session } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { publicApi } = require('./public-api.cjs');
 
 let mainWindow;
 const apiCache = new Map();
@@ -37,19 +38,18 @@ async function actualConfig(config) {
 app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   handle('api:fetch', async url => {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'https:' || parsed.hostname !== 'api.chess.com' || !parsed.pathname.startsWith('/pub/') || parsed.username || parsed.password) throw new Error('Only the documented Chess.com public API is allowed.');
+    const spec = publicApi(url), parsed = spec.url;
     const cacheKey = parsed.href;
     const cached = apiCache.get(cacheKey);
     if (cached?.expires > Date.now()) return cached.value;
     if (apiPending.has(cacheKey)) return apiPending.get(cacheKey);
     const request = (async () => {
-      const headers = { 'User-Agent': `ChessAsh/${app.getVersion()} (independent local chess analysis)` };
+      const headers = { 'User-Agent': `ChessAsh/${app.getVersion()} (independent local chess analysis)`, Accept: spec.accept };
       if (cached?.etag) headers['If-None-Match'] = cached.etag;
       if (cached?.modified) headers['If-Modified-Since'] = cached.modified;
-      const response = await fetch(parsed, { headers, redirect: 'error', signal: AbortSignal.timeout(30000) });
-      if (!response.ok && response.status !== 304) throw new Error(`Chess.com returned ${response.status}. Try again later or import a PGN.`);
-      const value = response.status === 304 && cached ? cached.value : await response.json();
+      const response = await fetch(parsed, { headers, redirect: 'error', signal: AbortSignal.timeout(60000) });
+      if (!response.ok && response.status !== 304) throw new Error(`${spec.provider} returned ${response.status}. Try again later or import a PGN.`);
+      const value = response.status === 304 && cached ? cached.value : spec.ndjson ? await response.text() : await response.json();
       const seconds = Number(response.headers.get('Cache-Control')?.match(/max-age=(\d+)/)?.[1] || 60);
       apiCache.set(cacheKey, { value, expires: Date.now() + Math.max(1, seconds) * 1000, etag: response.headers.get('ETag') || cached?.etag, modified: response.headers.get('Last-Modified') || cached?.modified });
       return value;

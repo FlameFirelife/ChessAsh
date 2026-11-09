@@ -4,7 +4,7 @@ Training turns mistakes in your reviewed games into positions you can practice. 
 
 ## Get your positions ready
 
-1. Import games from your Chess.com account or open a PGN.
+1. Import games from your Chess.com or Lichess account, or open a PGN.
 2. Set your main account in Library. For a PGN, choose your colour under Review as.
 3. Complete a game review, then open Training in the top navigation.
 

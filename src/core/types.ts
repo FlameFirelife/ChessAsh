@@ -18,6 +18,7 @@ export interface MoveReview {
   mate?: number;
   consequenceOf?: number;
   replyPv?: string[];
+  sacrificeEvidence?: import('./sacrifice').SacrificeEvidence;
 }
 export interface Review {
   version: number;
@@ -75,6 +76,7 @@ export interface PolicyResult {
   hint?: string;
 }
 export interface AnalyzeOptions {
+  fresh?: boolean;
   depth?: number;
   signal?: AbortSignal;
   onProgress?: (done: number, total: number) => void;

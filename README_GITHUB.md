@@ -1,6 +1,6 @@
 # ChessAsh
 
-Free post-game chess analysis for Windows and Android. Import your finished Chess.com games or open a PGN, review the turning points and try a better move.
+Free post-game chess analysis for Windows and Android. Import your finished Chess.com or Lichess games, or open a PGN, review the turning points and try a better move.
 
 Stockfish runs on your device. Windows opens maximized. The Android interface respects system-bar and display-cutout spacing. The Windows app also uses [Foxash](https://github.com/FlameFirelife/foxash/) for its review rules and can connect to Ollama or an API tutor you choose.
 
@@ -8,7 +8,10 @@ Get the Windows installer or Android APK from [Releases](https://github.com/Flam
 
 ## What it does
 
+- Creates shareable review cards for best moves, mistakes and analysed alternatives, with direct Android sharing.
 - Reviews games with move labels, accuracy scores, explanations and playable engine lines.
+- Imports Lichess games by username or game link, with separate account collections.
+- Offers ChessAsh or Chess.com move-quality names in Settings.
 - Explains tactical causes such as a defender leaving, an opened line, a fork or a pin, using legal analysed continuations.
 - Shows the best move with arrows and highlights, explaining its concrete benefit when supported by the position, with piece-and-square explanations linked to the board.
 - Lets you retry positions and reviews moves you try without changing the saved game.
@@ -20,7 +23,7 @@ Get the Windows installer or Android APK from [Releases](https://github.com/Flam
 - Saves games, reviews and notes locally. Saved reviews work offline.
 - Offers optional Windows tutoring through local Ollama or a compatible API provider. API charges may apply.
 
-The review screen keeps explanations above the board. The main header stays visible while scrolling. Mobile review gives more room to the explanation, board and move controls, and the desktop board uses the available width. Piece movement, captures and move feedback animate, with distinct effects for check, stalemate and checkmate and a brief spotlight for sound sacrifices. A reduced-motion setting is available. Enable Move sounds in Settings for a soft wooden tap when navigating or playing moves, including training. Detailed notation, the advantage graph and advanced analysis controls are optional.
+The review screen keeps explanations above the board. Reanalyse starts a fresh engine review; Continue review resumes a paused one. The main header stays visible while scrolling. Mobile review gives more room to the explanation, board and move controls, and the desktop board uses the available width. Piece movement, captures and move feedback animate, with distinct effects for check, stalemate and checkmate and a brief spotlight for sound sacrifices. A reduced-motion setting is available. Enable Move sounds in Settings for a soft wooden tap when navigating or playing moves, including training. Detailed notation, the advantage graph and advanced analysis controls are optional.
 
 Training offers focused practice or short mixed sessions, with exercises for undefended pieces, forks, back-rank mates and other missed opportunities. See the [training guide](TRAINING_GUIDE.md) to get started.
 

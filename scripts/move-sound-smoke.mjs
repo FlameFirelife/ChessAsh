@@ -31,6 +31,7 @@ try {
   for (let n = 1; n <= 3; n++) {
     await page.getByRole('button', { name: 'Next move', exact: true }).click();
     await expectCount(n);
+    await page.waitForTimeout(140);
   }
   await page.getByRole('button', { name: 'Previous move', exact: true }).click();
   await expectCount(4);

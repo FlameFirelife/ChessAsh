@@ -2,7 +2,8 @@ import { woodTapSamples } from './woodTap';
 
 let context: AudioContext | undefined;
 let buffer: AudioBuffer | undefined;
-const playing = new Set<AudioBufferSourceNode>();
+const playing = new Map<AudioBufferSourceNode, GainNode>();
+let lastStart = -Infinity;
 let revision = 0;
 
 export function prepareMoveSound() {
@@ -19,8 +20,14 @@ export function prepareMoveSound() {
 
 export function stopMoveSounds() {
   revision++;
-  for (const source of playing) { source.stop(); source.disconnect(); }
-  playing.clear();
+  for (const [source, gain] of playing) {
+    const now = context!.currentTime;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(gain.gain.value, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.008);
+    source.stop(now + 0.01);
+  }
+  lastStart = -Infinity;
 }
 
 export function playMoveSound() {
@@ -30,13 +37,20 @@ export function playMoveSound() {
   if (!audio || !tap) return;
   const start = () => {
     if (current !== revision || audio.state !== 'running') return;
-    for (const source of playing) { source.stop(); source.disconnect(); }
-    playing.clear();
+    const now = audio.currentTime;
+    if (now - lastStart < 0.11) return;
+    lastStart = now;
     const source = audio.createBufferSource();
     source.buffer = tap;
-    source.connect(audio.destination);
-    playing.add(source);
-    source.onended = () => { playing.delete(source); source.disconnect(); };
+    const gain = audio.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(1, now + 0.003);
+    gain.gain.setValueAtTime(1, now + tap.duration - 0.012);
+    gain.gain.linearRampToValueAtTime(0, now + tap.duration);
+    source.connect(gain);
+    gain.connect(audio.destination);
+    playing.set(source, gain);
+    source.onended = () => { playing.delete(source); source.disconnect(); gain.disconnect(); };
     source.start();
   };
   if (audio.state === 'running') start();
