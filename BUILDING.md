@@ -1,5 +1,15 @@
-# Building ChessAsh
+# Build ChessAsh V1.6
 
+The V1.6 source version is `1.6.0` and the Android version code is `10`. Use a stable Rust toolchain. Windows also needs Node.js, `npm ci` and Inno Setup 6. Android builds need JDK 21, SDK 36, NDK 28.2.13676358 and `cargo-ndk`.
+
+- **Windows** · Run `Build-Windows.bat` after provisioning Stockfish and Foxash. The installer updates the existing app and opens its library on first launch.
+- **Android** · Run `pwsh -File native/scripts/build-android.ps1 -Abi arm64-v8a -Release` after provisioning the ARM64 engines. Use `x86_64` for the emulator.
+
+The signed APK updates the existing ChessAsh app. See [native/README.md](native/README.md) for prerequisites and output paths. See [the V1.6 notes](docs/releases/V1.6.md) for what changed.
+
+## V1.5 build and release reference
+
+These commands describe the legacy web-based app. Use the native commands above for V1.6.
 Run the build files from the project folder. They also work when the folder name contains spaces. Both stop on errors and wait for a key before closing. For automation, set `CHESSASH_NO_PAUSE=1`; the exit code remains nonzero if a build fails.
 
 ## Requirements

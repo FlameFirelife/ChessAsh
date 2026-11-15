@@ -1,5 +1,9 @@
 # Public game imports
 
+The V1.6 native import implementation is in `native/src/import.rs`. Use **Import game** to fetch finished games or open a PGN. See the [user guide](USER_GUIDE.md) for instructions.
+
+## V1.5 implementation
+
 Choose Chess.com or Lichess under Game source in the import dialog. Both imports use public finished games and require no password. PGN file/paste import remains available.
 
 Lichess accepts a username or a game link, including `/game/` links, orientation suffixes and player links. Only the public eight-character game ID is sent for a specific game. Username import requests up to 300 finished standard games from the selected month range, newest first. An empty range, ongoing game or unsupported variant is not added. A single-game link works without a username; supplying a username also checks that the player belongs to that game.

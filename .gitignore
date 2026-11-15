@@ -20,6 +20,7 @@ android/build/
 android/capacitor-cordova-android-plugins/build/
 android/app/src/main/assets/public/
 verification/
+.codex-attachments/
 HANDOFF.md
 STATUS.md
 BUILDLOG.md

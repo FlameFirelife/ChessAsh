@@ -1,5 +1,7 @@
 # Signing and installation warnings
 
+The signed V1.6 Android APK uses package ID `dev.flamedev.chessash`, version code 10 and the existing release key. The V1.6 Windows installer is unsigned.
+
 Windows release installers are unsigned until a trusted signing identity is configured. The Android release APK is signed with the project's existing update key. Editing the publisher name does not change either status.
 
 ## Windows
@@ -17,7 +19,7 @@ $env:CHESSASH_SIGNING_THUMBPRINT = 'REPLACE_WITH_YOUR_CERTIFICATE_THUMBPRINT'
 .\Build-Windows.bat -RequireSigned
 ```
 
-The build validates the certificate before packaging, signs `release/win-unpacked/ChessAsh.exe`, then uses Inno Setup's signing hook for the installer, uninstaller and temporary installer copies. Signing uses SHA-256 and requires a timestamp. The final installer is checked for a valid timestamped signature from the selected certificate. [Inno Setup documents the signing hook here](https://jrsoftware.org/ishelp/topic_setup_signtool.htm).
+The build validates the certificate before packaging, signs `work/native-windows/ChessAsh.exe`, then uses Inno Setup's signing hook for the installer, uninstaller and temporary installer copies. Signing uses SHA-256 and requires a timestamp. The final installer is checked for a valid timestamped signature from the selected certificate. [Inno Setup documents the signing hook here](https://jrsoftware.org/ishelp/topic_setup_signtool.htm).
 
 `CHESSASH_TIMESTAMP_SERVER` optionally overrides the default `http://timestamp.digicert.com` Authenticode timestamp endpoint. It must support the timestamp protocol used by PowerShell's [Set-AuthenticodeSignature](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-authenticodesignature).
 
@@ -33,4 +35,4 @@ Keep private keys, tokens, passwords and certificate exports out of the reposito
 
 Android release builds already verify the APK signature. Keep `.private/android-release.jks` and its password safe so future versions update existing installations. Do not replace this key to change a warning or displayed name. See [BUILDING.md](BUILDING.md) for backup details and [Android's signing documentation](https://developer.android.com/studio/publish/app-signing) for the update requirements.
 
-A signed APK is not proof of store approval or developer verification. Sideloading, Play Protect and developer-verification messages need to be identified by their exact wording before choosing a remedy. Android version code is 9; the existing Android update identity must be preserved when building it.
+A signed APK is not proof of store approval or developer verification. Sideloading, Play Protect and developer-verification messages need to be identified by their exact wording before choosing a remedy.

@@ -1,4 +1,4 @@
-param([switch]$SkipWebBuild, [switch]$RequireSigned)
+param([switch]$SkipWebBuild, [switch]$RequireSigned, [switch]$InstallerTest)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
@@ -30,11 +30,16 @@ if ($RequireSigned -or $signingEnabled) { & $signingScript -CheckOnly }
 else { Write-Warning 'No Windows signing identity configured. This build will be unsigned. Use -RequireSigned for a public signed build; see SIGNING.md.' }
 $compiler = Find-InnoCompiler
 try {
-    Initialize-ChessAshBuild -Platform Windows -SkipWebBuild:$SkipWebBuild
     $package = Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json
     $settings = Get-Content -LiteralPath 'build/release.json' -Raw | ConvertFrom-Json
     $version = [string]$package.version
     if ($version -notmatch '^\d+\.\d+\.\d+(?:\.\d+)?$') { throw 'Inno builds require a numeric major.minor.patch[.build] package version.' }
+    $nativeBuild = [version]$version -ge [version]'1.6'
+    if ($nativeBuild) {
+        Enter-ChessAshBuildLock
+    } else {
+        Initialize-ChessAshBuild -Platform Windows -SkipWebBuild:$SkipWebBuild
+    }
     $docsPath = [IO.Path]::GetFullPath((Join-Path $projectRoot 'work\release-docs'))
     $workRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot 'work')) + [IO.Path]::DirectorySeparatorChar
     if (-not $docsPath.StartsWith($workRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Invalid documentation staging path.' }
@@ -51,12 +56,49 @@ try {
         Copy-Item -LiteralPath $document -Destination (Join-Path $docsPath $leaf) -Force
     }
     Write-Host 'Preparing the Windows application...'
-    & npx.cmd --no-install electron-builder --win --x64 --dir
-    if ($LASTEXITCODE) { throw "Windows application build failed ($LASTEXITCODE)." }
-    if (-not (Test-Path -LiteralPath 'release\win-unpacked\ChessAsh.exe')) { throw 'The application executable was not produced.' }
-    if ($signingEnabled) { & $signingScript -Path (Join-Path $projectRoot 'release\win-unpacked\ChessAsh.exe') }
-    Write-Host 'Compiling the Inno Setup installer...'
     $arguments = @('/Qp', "/DProjectRoot=$projectRoot", "/DAppVersion=$version", "/DAppPublisher=$($settings.publisher)", "/DAppURL=$($settings.publisherURL)", (Join-Path $projectRoot 'installer\ChessAsh.iss'))
+    if ($nativeBuild) {
+        $source = Join-Path $projectRoot 'work/native-windows'
+        $engines = Join-Path $projectRoot 'native/engines/windows'
+        foreach ($name in @('stockfish.exe', 'foxash.exe')) {
+            if (!(Test-Path -LiteralPath (Join-Path $engines $name))) {
+                throw 'Provision the Windows engines with native/scripts/prepare-engines.ps1 first.'
+            }
+        }
+        & cargo build --release --manifest-path native/Cargo.toml --target-dir native/target --bin chessash-native
+        if ($LASTEXITCODE) { throw "Windows application build failed ($LASTEXITCODE)." }
+        New-Item -ItemType Directory -Force -Path $source, (Join-Path $source 'engines') | Out-Null
+        $exe = Join-Path $source 'ChessAsh.exe'
+        Copy-Item -LiteralPath 'native/target/release/chessash-native.exe' -Destination $exe -Force
+        Copy-Item -LiteralPath 'build/icon.ico' -Destination (Join-Path $source 'ChessAsh.ico') -Force
+        Get-ChildItem -LiteralPath $engines -File | Where-Object {
+            $_.Name -in @('stockfish.exe', 'stockfish-avx2.exe', 'foxash.exe',
+                'STOCKFISH-LICENSE.txt', 'FOXASH-LICENSE.txt', 'nn-61e7af4bb97d.nnue')
+        } | Copy-Item -Destination (Join-Path $source 'engines') -Force
+
+        $transferSource = Join-Path $projectRoot 'work/native-windows-transfer'
+        $transferHelper = Join-Path $projectRoot 'work/chessash-transfer.asar'
+        New-Item -ItemType Directory -Force -Path $transferSource | Out-Null
+        Copy-Item -LiteralPath 'native/migration/export-windows.cjs','native/migration/legacy-origin.html','native/migration/web' -Recurse -Destination $transferSource -Force
+        [IO.File]::WriteAllText((Join-Path $transferSource 'package.json'), '{"name":"chessash-library-transfer","main":"export-windows.cjs","version":"1.0.0"}')
+        & node -e "require('@electron/asar').createPackage(process.argv[1], process.argv[2]).catch(error => { console.error(error.message); process.exitCode = 1; })" $transferSource $transferHelper
+        if ($LASTEXITCODE) { throw 'The Windows library transfer helper could not be packaged.' }
+        $arguments = @('/DNativeBuild', "/DAppSourceDir=$source", "/DWindowsTransferHelper=$transferHelper") + $arguments
+    } else {
+        & npx.cmd --no-install electron-builder --win --x64 --dir
+        if ($LASTEXITCODE) { throw "Windows application build failed ($LASTEXITCODE)." }
+        $exe = Join-Path $projectRoot 'release/win-unpacked/ChessAsh.exe'
+    }
+    if (!(Test-Path -LiteralPath $exe)) { throw 'The application executable was not produced.' }
+    if ($signingEnabled) { & $signingScript -Path $exe }
+    $output = Join-Path $projectRoot "release\ChessAsh-Setup-$version.exe"
+    if ($InstallerTest) {
+        $testOutput = Join-Path $projectRoot 'work/installer-tests'
+        New-Item -ItemType Directory -Force -Path $testOutput | Out-Null
+        $arguments = @('/DTestBuild', "/DInstallerOutputDir=$testOutput") + $arguments
+        $output = Join-Path $testOutput "ChessAsh-Installer-Test-$version.exe"
+    }
+    Write-Host 'Compiling the Inno Setup installer...'
     if ($signingEnabled) {
         $escapedSigningScript = $signingScript.Replace('$', '$$')
         $signCommand = 'powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $q' + $escapedSigningScript + '$q -Path $f'
@@ -64,7 +106,6 @@ try {
     }
     & $compiler @arguments
     if ($LASTEXITCODE) { throw "Inno Setup compilation failed ($LASTEXITCODE)." }
-    $output = Join-Path $projectRoot "release\ChessAsh-Setup-$version.exe"
     if (-not (Test-Path -LiteralPath $output)) { throw 'The installer output is missing.' }
     if ($signingEnabled) { & $signingScript -Path $output -VerifyOnly }
     Write-Host "Installer ready: $output"

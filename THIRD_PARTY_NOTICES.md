@@ -8,6 +8,8 @@ Bundled engine: npm `stockfish@19.0.1`, `stockfish-19-lite-single.js` and matchi
 
 Copyright the Stockfish contributors and Stockfish.js contributors. GPL version 3. Licence included in `public/engine/COPYING.txt` and the installed engine assets. Exact corresponding source, network/build files and build instructions: https://github.com/nmrugg/stockfish.js/tree/v19.0.1 . Upstream: https://github.com/official-stockfish/Stockfish . Preserve that source reference with any redistribution. SHA256 hashes are in `public/asset-sources.json` for artwork/fonts and the generated release manifest for engine files.
 
+V1.6 builds native Stockfish 19 Lite from the same v19.0.1 source and the `nn-61e7af4bb97d.nnue` network. The preparation and build steps are in `native/scripts/prepare-engines.ps1` and `native/scripts/build-stockfish.ps1`. The Windows installer includes the GPL notice in `engines/STOCKFISH-LICENSE.txt`.
+
 ## Foxash
 
 Foxash 1.4.0 by FlameDev Studios, MIT licence. Repository: [github.com/FlameFirelife/foxash](https://github.com/FlameFirelife/foxash/). Windows bundles the existing release executable and source archive from that project; licence is included in `resources/foxash`. The `.foxash` review and training programs are ChessAsh source.

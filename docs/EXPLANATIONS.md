@@ -1,5 +1,13 @@
 # Explanation evidence
 
+## V1.6 coach
+
+The native coach in `native/crates/review-engine/src/coaching.rs` gives one short reason above the board. It checks the played move and legal replies for concrete changes such as lost defenders, opened lines, and new threats. It can also explain quiet moves through development, central control or preparation for castling. The coach uses the side selected under **Review as** to say “you” or “your opponent”. Linked squares connect the explanation to the board.
+
+The blue best-move summary gives the alternative and its immediate purpose when supported. **Full explanation** adds reasoning when there is more to say. **Show line** plays the actual continuation. `native/crates/review-engine/tests/parity.rs` checks both playing perspectives and representative opening and tactical positions.
+
+## V1.5 implementation
+
 `core/moveInsight.ts` replays the played move and up to eight plies of its supplied opponent continuation with chess.js. A malformed move or illegal step within that window rejects the line. It returns observable mechanisms rather than inferred human intentions:
 
 - A piece loses its only legal defender when that defender moves, and the line later captures the stationary target.

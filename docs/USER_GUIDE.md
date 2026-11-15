@@ -1,6 +1,6 @@
 # Using ChessAsh
 
-Download the Windows installer or Android APK from [Releases](https://github.com/FlameFirelife/ChessAsh/releases/latest). Windows downloads are unsigned. Android needs a recent System WebView with WebAssembly support. Keep the same Android app signing identity when installing updates.
+Download the Windows installer or Android APK from [Releases](https://github.com/FlameFirelife/ChessAsh/releases/latest). Windows downloads are unsigned. The Android release supports ARM64 devices running Android 7.0 or later. Install the update over your existing copy to keep your library.
 
 ## Import a game
 
@@ -12,7 +12,7 @@ The included sample lets you try a review without importing your own game. Sampl
 
 Choose your side under **Review as**, then start a review. Stockfish runs on your device. Completed reviews and notes stay in your local library and can be opened offline. **Reanalyse** starts a new engine review; **Continue review** resumes a paused review.
 
-Use the arrows or move list to step through the game. The coach explains the move above the board. The blue best-move summary names the piece, its source and destination, and a short benefit when the position supports one. Open **Full explanation** for the complete reasoning and analysed continuation. Select a linked square to highlight it on the board.
+Use the arrows or move list to step through the game. The coach explains the move above the board. The blue best-move summary names the piece, its source and destination, and a short benefit when the position supports one. Open **Full explanation** for more about the tactic or plan when there is additional evidence. Select a linked square to highlight the relevant board position. **Show line** plays the engine continuation.
 
 **Try again** lets you choose another move. Moves you try receive a temporary review; your original game and notes stay saved. **Show line** previews the engine continuation. Open **Explore** when you want to explore manually.
 
@@ -38,4 +38,4 @@ For build instructions and platform requirements, see [BUILDING.md](../BUILDING.
 
 ## Share a review card
 
-Select Share review beside the PGN export button. Choose a moment and whether to show player names. Every card includes the ChessAsh repository URL. Share opens Android’s sharing menu; Save PNG image saves a separate copy. Browsers with file sharing support can share directly too.
+Select Share review beside the PGN export button. Choose a moment and whether to show player names. Every card includes the ChessAsh repository URL. Share opens Android’s sharing menu; Save PNG image saves a separate copy. On Windows, save the PNG to share it.

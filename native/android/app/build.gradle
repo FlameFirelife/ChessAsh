@@ -1,0 +1,75 @@
+plugins {
+    id 'com.android.application' version '8.13.0'
+}
+
+def projectVersion = new groovy.json.JsonSlurper().parse(rootProject.file('../../package.json')).version
+def releaseCode = new groovy.json.JsonSlurper().parse(rootProject.file('../../build/release.json')).androidVersionCode
+def inPlace = providers.gradleProperty('chessashInPlace').orNull == 'true'
+def versionOverride = providers.gradleProperty('chessashVersionCode').getOrElse(releaseCode.toString())
+def previewAbi = providers.gradleProperty('chessashAbi').orNull
+def signingStore = providers.environmentVariable('CHESSASH_SIGNING_STORE').orNull
+def signingPassword = providers.environmentVariable('CHESSASH_SIGNING_PASSWORD').orNull
+if (previewAbi != null && !(previewAbi in ['arm64-v8a', 'x86_64'])) {
+    throw new GradleException('Unsupported ChessAsh ABI.')
+}
+if (inPlace && (!(versionOverride ==~ /[0-9]{1,10}/) || versionOverride.toLong() <= 9 || versionOverride.toLong() > 2100000000)) {
+    throw new GradleException('Set chessashVersionCode above 9 for an in-place build.')
+}
+if (inPlace && (!signingStore || !signingPassword)) {
+    throw new GradleException('The existing ChessAsh signing key is required to build an update.')
+}
+
+android {
+    namespace 'dev.flamedev.chessash'
+    compileSdk 36
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        applicationId inPlace ? 'dev.flamedev.chessash' : 'dev.flamedev.chessash.nativepreview'
+        minSdk 24
+        targetSdk 36
+        versionCode inPlace ? versionOverride.toInteger() : releaseCode
+        versionName inPlace ? projectVersion : projectVersion + '-native-preview'
+        manifestPlaceholders.chessashLabel = inPlace ? 'ChessAsh' : 'ChessAsh Native'
+        if (previewAbi != null) ndk.abiFilters.add(previewAbi)
+    }
+
+    if (inPlace) {
+        signingConfigs {
+            existingRelease {
+                storeFile file(signingStore)
+                storePassword signingPassword
+                keyAlias 'chessash'
+                keyPassword signingPassword
+            }
+        }
+        buildTypes.release.signingConfig = signingConfigs.existingRelease
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += ['**/libstockfish*.so', '**/libfoxash.so']
+        }
+    }
+
+    sourceSets {
+        main.jniLibs.srcDirs = ['src/main/jniLibs', '../../engines/android']
+        main.res.srcDirs += ['../../assets/android']
+        if (inPlace) main.assets.srcDirs += ['../../migration/web']
+    }
+}
+
+androidComponents {
+    if (inPlace) {
+        beforeVariants(selector().withBuildType('debug')) { it.enable = false }
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core:1.17.0'
+}

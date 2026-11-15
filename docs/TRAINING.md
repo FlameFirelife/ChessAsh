@@ -1,5 +1,9 @@
 # Personalized training
 
+V1.6 uses the native Training dashboard on both platforms. It groups due practice and the next session, practice by pattern, and recorded first-try performance. The native UI is in `native/src/training_ui.rs`, and both platforms use the bundled Foxash training rules. See the [Training guide](../TRAINING_GUIDE.md) for how to practice.
+
+## V1.5 implementation
+
 Training uses completed reviews from the local library. It selects the main account's side or an explicitly chosen PGN review side. Neutral games, opponents' moves, samples, incomplete reviews and results below depth 8 are excluded. Positions already lost to a forced mate and positions with only one legal move are excluded too.
 
 Cards come from inaccuracies, mistakes, blunders and missed chances with a different legal best move. Duplicate positions are combined. Specific groups cover undefended non-pawn pieces captured by a legal saved reply, knight/pawn forks with multiple legal attack targets and rook/queen back-rank checkmates behind a pawn shield. Pinned captures do not establish a fork. These conservative checks are not a complete tactical-motif detector. Other cards use capture/check/reply or general better-choice groups. Group counts refer to distinct practice positions.

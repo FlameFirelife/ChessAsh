@@ -1,5 +1,9 @@
 # Board animations
 
+In V1.6, `native/src/board.rs` draws piece movement, trails, captures, terminal board effects and the sound-sacrifice spotlight. `native/src/audio.rs` handles the wooden tap. Both platforms share the same implementation and use the app’s reduced-motion and move-sound settings.
+
+## V1.5 implementation
+
 `Board.tsx` uses stable piece identities from `core/boardMotion.ts`. Position changes animate transforms over 330ms with a small scale lift and settle. When consecutive changes arrive less than 210ms apart, duration adapts to 150–230ms and moved pieces receive two faint, blurred afterimages. The trail layer is capped at twelve images; a new transition replaces the old batch, and completed trails remove themselves. Interrupted movement starts from the computed current transform. Orientation changes snap to the new layout and clear trails. Captures fade and shrink over 230ms after a 60ms delay; the transient captured-piece state clears after 440ms.
 
 `BoardEffects.tsx` and `board-effects.css` provide finite, non-interactive overlays inside the board:

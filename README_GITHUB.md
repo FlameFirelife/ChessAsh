@@ -1,10 +1,8 @@
-# ChessAsh
+# ChessAsh V1.6
 
-Free post-game chess analysis for Windows and Android. Import your finished Chess.com or Lichess games, or open a PGN, review the turning points and try a better move.
+ChessAsh reviews finished games on Windows and Android. V1.6 rebuilds the app in Rust and runs Stockfish 19 Lite natively. Foxash still handles move classification and training rules.
 
-Stockfish runs on your device. Windows opens maximized. The Android interface respects system-bar and display-cutout spacing. The Windows app also uses [Foxash](https://github.com/FlameFirelife/foxash/) for its review rules and can connect to Ollama or an API tutor you choose.
-
-Get the Windows installer or Android APK from [Releases](https://github.com/FlameFirelife/ChessAsh/releases/latest).
+Download ChessAsh V1.6 for Windows x64 or Android ARM64. Install it over your existing copy of ChessAsh to keep your library, reviews and settings. [Download V1.6](https://github.com/FlameFirelife/ChessAsh/releases/tag/V1.6)
 
 ## What it does
 
@@ -31,31 +29,13 @@ Training offers focused practice or short mixed sessions, with exercises for und
 
 [`rules/review.foxash`](rules/review.foxash) receives chess facts and engine evaluations, then chooses move labels, key moments and retry guidance. Coaching packs can change its thresholds without rerunning Stockfish.
 
-The runtime ships with the Windows app, so users do not need to install Foxash separately. Android uses matching default rules in TypeScript. Foxash's MIT licence and source archive are included alongside the bundled runtime.
+ChessAsh bundles the Foxash runtime on Windows and Android. The source includes its MIT licence and source archive.
 
 [`rules/training.foxash`](rules/training.foxash) chooses training priorities, coaching focus and repeat intervals from your practice history and verified chess facts.
 
 ## Build it
 
-You need Node.js 22 or newer. Windows installers also need Inno Setup 6. Android builds need JDK 21 and Android SDK 36.
-
-```bat
-Build-Windows.bat
-Build-Android.bat
-```
-
-Build one target at a time. The scripts install locked dependencies, build the current interface and write artifacts to `release/`. The Windows installer adds ChessAsh to PATH and upgrades its previous installation. Android release updates reuse the same signing key.
-
-For development:
-
-```sh
-npm ci
-npm run prepare:engine
-node scripts/licenses.mjs
-npm run dev
-```
-
-See [BUILDING.md](BUILDING.md) for tool discovery, release metadata, versioning and signing. Run `npm test` for the automated tests. Focused interface and engine checks are in `scripts/`.
+See [BUILDING.md](BUILDING.md) for release build commands and [the native README](native/README.md) for engine setup and upgrade details.
 
 ## Privacy and limits
 
@@ -67,7 +47,7 @@ Training uses completed reviews from your side of the game. Practice history sta
 
 Tutor replies support Markdown, with engine-backed coaching and playable legal continuations. Ollama can run locally. API tutoring sends game context, engine findings and recent chat to the provider you select. There is no silent switch to a cloud model. Model explanations can still be wrong.
 
-Windows uses Electron and Android uses Capacitor. Both render their interface with web technology inside the app. Windows downloads are unsigned; source builds support a configured trusted signing certificate. Android release APKs are signed. See [SIGNING.md](SIGNING.md) for installation warnings and signing setup.
+V1.6 uses a native Rust interface on both platforms. See [SIGNING.md](SIGNING.md) for release signing and Android update identity.
 
 ## Contributing
 

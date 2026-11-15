@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "1.5.0"
+  #define AppVersion "1.6.0"
 #endif
 #ifndef AppPublisher
   #define AppPublisher "FlameDev Studios"
@@ -54,7 +54,11 @@ MinVersion=10.0.19045
 OutputDir={#InstallerOutputDir}
 OutputBaseFilename={#SetupFilename}
 SetupIconFile={#ProjectRoot}\build\icon.ico
+#ifdef NativeBuild
+UninstallDisplayIcon={app}\ChessAsh.ico
+#else
 UninstallDisplayIcon={app}\ChessAsh.exe
+#endif
 LicenseFile={#ProjectRoot}\LICENSE
 Compression=lzma2/fast
 SolidCompression=yes
@@ -79,13 +83,24 @@ Name: "addtopath"; Description: "Add ChessAsh to my PATH (run chessash from a ne
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"; Flags: unchecked
 
 [Files]
+#ifdef NativeBuild
+Source: "{#WindowsTransferHelper}"; Flags: dontcopy noencryption
+Source: "{#AppSourceDir}\ChessAsh.exe"; DestDir: "{app}"; Flags: ignoreversion noencryption
+Source: "{#AppSourceDir}\*"; DestDir: "{app}"; Excludes: "ChessAsh.exe"; Flags: ignoreversion recursesubdirs createallsubdirs
+#else
 Source: "{#AppSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+#endif
 Source: "{#AppDocsDir}\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 #ifndef TestBuild
 [Icons]
+#ifdef NativeBuild
+Name: "{autoprograms}\ChessAsh"; Filename: "{app}\ChessAsh.exe"; IconFilename: "{app}\ChessAsh.ico"; WorkingDir: "{app}"; AppUserModelID: "dev.flamedev.chessash"
+Name: "{autodesktop}\ChessAsh"; Filename: "{app}\ChessAsh.exe"; IconFilename: "{app}\ChessAsh.ico"; WorkingDir: "{app}"; AppUserModelID: "dev.flamedev.chessash"; Tasks: desktopicon
+#else
 Name: "{autoprograms}\ChessAsh"; Filename: "{app}\ChessAsh.exe"; WorkingDir: "{app}"; AppUserModelID: "dev.flamedev.chessash"
 Name: "{autodesktop}\ChessAsh"; Filename: "{app}\ChessAsh.exe"; WorkingDir: "{app}"; AppUserModelID: "dev.flamedev.chessash"; Tasks: desktopicon
+#endif
 
 [Run]
 Filename: "{app}\ChessAsh.exe"; Description: "Open ChessAsh"; Flags: nowait postinstall skipifsilent
@@ -215,6 +230,9 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Directory, Uninstaller, TemporaryUninstaller: String;
+#ifdef NativeBuild
+  TransferHelper: String;
+#endif
   ExitCode: Integer;
 begin
   Result := '';
@@ -223,6 +241,25 @@ begin
     Result := 'An older all-users ChessAsh installation was found. Uninstall it from Windows Settings first, then run this per-user installer. Your saved games and settings are kept.';
     Exit;
   end;
+#endif
+#ifdef NativeBuild
+  Directory := ExpandConstant('{app}');
+  if FileExists(AddBackslash(Directory) + 'resources\app.asar') then begin
+    ExtractTemporaryFile('chessash-transfer.asar');
+    ExtractTemporaryFile('ChessAsh.exe');
+    TransferHelper := ExpandConstant('{tmp}\chessash-transfer.asar');
+    if not Exec(ExpandConstant('{tmp}\ChessAsh.exe'),
+        '--prepare-windows-update ' + AddQuotes(Directory) + ' ' + AddQuotes(TransferHelper),
+        ExpandConstant('{tmp}'), SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+      Result := 'The existing ChessAsh library could not be opened for the update.'
+    else if ExitCode = 2 then
+      Result := 'Close ChessAsh before installing this update.'
+    else if ExitCode <> 0 then
+      Result := 'ChessAsh could not read its existing library. The previous installation is still available.';
+    if Result <> '' then Exit;
+  end;
+#endif
+#ifndef TestBuild
   if KnownLegacyInstallation(HKCU, Directory, Uninstaller) then begin
     Log('Migrating the earlier per-user ChessAsh installer.');
     TemporaryUninstaller := ExpandConstant('{tmp}\ChessAsh-Legacy-Uninstall.exe');

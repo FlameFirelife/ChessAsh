@@ -1,5 +1,9 @@
 # Move classifications
 
+V1.6 shares move-quality names and icons between the native coach, board and review table. Foxash uses the saved engine evidence to classify moves. See `native/crates/review-engine/tests/parity.rs` for native regression checks.
+
+## V1.5 implementation
+
 Move-quality names can use ChessAsh or Chess.com terminology in Settings. Sound sacrifice becomes Brilliant, Critical find becomes Great, Opening becomes Book and Missed chance becomes Miss. The setting changes names in the review, board effects, move lists, exports and tutor context. It does not copy Chess.com’s scoring algorithm or rewrite saved evaluations.
 
 The quality list, move list, coach and board share `QualityIcon`. Opening/Book uses Lucide’s book icon; other categories use their shared notation. The existing palette and animation timing remain in use.

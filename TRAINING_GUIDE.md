@@ -12,7 +12,7 @@ Sample games, your opponent's moves and games reviewed from a neutral perspectiv
 
 ## Choose a session
 
-Start training opens a mixed session of up to five positions due for practice. It starts with a high-priority position and varies the problems and source games that follow.
+The Training dashboard shows your next session, practice by pattern, and progress over time. Start training opens a mixed session of up to five positions. It starts with a high-priority position and varies the problems and source games that follow.
 
 Practice this opens a session for one group. Depending on your reviewed games, groups can include undefended pieces, forks, back-rank mates, captures, checks and opponent replies. The app uses specific groups when the saved analysis supports them.
 

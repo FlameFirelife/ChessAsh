@@ -1,0 +1,45 @@
+[package]
+name = "chessash-native"
+version = "1.6.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+
+[lib]
+name = "chessash_native"
+crate-type = ["rlib", "cdylib"]
+
+[features]
+visual-qa = []
+
+[[bin]]
+name = "chessash-native"
+path = "src/main.rs"
+
+[dependencies]
+eframe = { version = "0.34.3", default-features = false, features = ["default_fonts", "glow"] }
+resvg = { version = "0.50", default-features = false, features = ["text"] }
+chrono = "0.4"
+chessash-review-core = { path = "crates/review-core" }
+chessash-review-engine = { path = "crates/review-engine" }
+chessash-persistence = { path = "crates/persistence" }
+shakmaty = "0.30"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(windows)'.dependencies]
+eframe = { version = "0.34.3", default-features = false, features = ["accesskit"] }
+rfd = "0.17"
+rodio = { version = "0.21", default-features = false, features = ["playback"] }
+futures-util = "0.3"
+pulldown-cmark = { version = "0.13", default-features = false }
+tokio = { version = "1", features = ["rt", "sync", "macros"] }
+zeroize = "1"
+tempfile = "3"
+
+[target.'cfg(target_os = "android")'.dependencies]
+eframe = { version = "0.34.3", default-features = false, features = ["android-native-activity"] }
+winit = { version = "0.30", default-features = false }
+jni = "0.21"
+android_logger = "0.15"
+log = "0.4"
