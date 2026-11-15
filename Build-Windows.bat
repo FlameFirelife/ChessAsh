@@ -1,9 +1,15 @@
 @echo off
 setlocal
 title ChessAsh - Windows build
+where pwsh.exe >nul 2>&1
+if errorlevel 1 (
+    echo PowerShell 7 is required to build ChessAsh.
+    if not defined CHESSASH_NO_PAUSE pause
+    exit /b 1
+)
 pushd "%~dp0"
 if errorlevel 1 exit /b 1
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\build-windows.ps1" %*
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\build-windows.ps1" %*
 set "CHESSASH_BUILD_EXIT=%ERRORLEVEL%"
 popd
 if not defined CHESSASH_NO_PAUSE pause

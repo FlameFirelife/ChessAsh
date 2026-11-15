@@ -2,7 +2,7 @@
 param(
     [Parameter(Mandatory)][string]$OutputPath,
     [string]$ProfilePath = (Join-Path $env:APPDATA 'chessash'),
-    [string]$ElectronPath = (Join-Path $PSScriptRoot '../../node_modules/electron/dist/electron.exe')
+    [Parameter(Mandatory)][string]$ElectronPath
 )
 
 $ErrorActionPreference = 'Stop'

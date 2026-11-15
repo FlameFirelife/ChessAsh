@@ -1,10 +1,6 @@
 node_modules/
-dist/
 release/
 work/
-android/.gradle/
-android/local.properties
-android/app/build/
 *.keystore
 *.jks
 .private/
@@ -15,10 +11,6 @@ android/app/build/
 *.dpapi
 *.pfx
 *.p12
-*.tsbuildinfo
-android/build/
-android/capacitor-cordova-android-plugins/build/
-android/app/src/main/assets/public/
 verification/
 .codex-attachments/
 HANDOFF.md
@@ -26,4 +18,3 @@ STATUS.md
 BUILDLOG.md
 NATIVE_REBUILD.md
 .release-upload/
-scripts/preview-animations.mjs

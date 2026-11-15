@@ -2,29 +2,9 @@
   "updated": "2026-11-05",
   "assets": [
     {
-      "file": "fonts/atkinson-hyperlegible-mono-latin-ext.woff2",
-      "url": "https://fonts.gstatic.com/s/atkinsonhyperlegiblemono/v8/tss4AoFBci4C4gvhPXrt3wjT1MqSzhA4t7IIcncBiwKjhFyRHQ.woff2",
-      "sha256": "3fa1fa7e990377c87018d62f356cc42b8db39fd88cee5724431e9f0d63b7f32f"
-    },
-    {
-      "file": "fonts/atkinson-hyperlegible-mono-latin.woff2",
-      "url": "https://fonts.gstatic.com/s/atkinsonhyperlegiblemono/v8/tss4AoFBci4C4gvhPXrt3wjT1MqSzhA4t7IIcncBiwKthFw.woff2",
-      "sha256": "2706b1ee4f452e744ea91f7e4908cbde9c5d35521bf5ffffc71a382a2de89613"
-    },
-    {
       "file": "fonts/Atkinson-Hyperlegible-Mono-OFL.txt",
       "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/atkinsonhyperlegiblemono/OFL.txt",
       "sha256": "1ebb31cf7393164f20d10c1d48406cddb5314feff8465531cf1e4ba37e9dd740"
-    },
-    {
-      "file": "fonts/host-grotesk-latin-ext.woff2",
-      "url": "https://fonts.gstatic.com/s/hostgrotesk/v5/co3BmWBnlCJ3U42vbbfdwMjZqljm0U0.woff2",
-      "sha256": "194782c85ee857df4373f6c246e4da9c0ba3cccf85756f6d26e1e78de3479495"
-    },
-    {
-      "file": "fonts/host-grotesk-latin.woff2",
-      "url": "https://fonts.gstatic.com/s/hostgrotesk/v5/co3BmWBnlCJ3U42vbbfdwMjZpFjm.woff2",
-      "sha256": "ce9c9db8a488852eb7e4a52f51fd8ce0c93ef61a8d3bfa054b509ec92958dcfe"
     },
     {
       "file": "fonts/Host-Grotesk-OFL.txt",

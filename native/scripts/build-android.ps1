@@ -7,24 +7,21 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $native = Split-Path -Parent $PSScriptRoot
-$legacy = Split-Path -Parent $native
+$projectRoot = Split-Path -Parent $native
 $signedUpdate = $InPlace -or $Release
-if (!$Sdk) {
-    $localProps = Join-Path $legacy 'android/local.properties'
-    if (Test-Path $localProps) {
-        $Sdk = (Get-Content $localProps | Where-Object { $_ -like 'sdk.dir=*' }) -replace '^sdk.dir=', ''
-    }
-}
-if (!$Sdk -or !(Test-Path $Sdk)) { throw 'Set ANDROID_HOME to an installed Android SDK.' }
-$env:ANDROID_HOME = $Sdk
-$env:ANDROID_NDK_HOME = Join-Path $Sdk 'ndk/28.2.13676358'
+. (Join-Path $projectRoot 'scripts/android-env.ps1')
+$config = Get-ChessAshBuildEnvironment $projectRoot
+$sdkInfo = Find-ChessAshAndroidSdk $projectRoot $config $Sdk
+$env:ANDROID_HOME = $sdkInfo.Root
+$env:ANDROID_SDK_ROOT = $sdkInfo.Root
+$env:JAVA_HOME = Find-ChessAshJava21 $config
+if ($config['gradleUserHome'] -and !$env:GRADLE_USER_HOME) { $env:GRADLE_USER_HOME = $config['gradleUserHome'] }
+$env:ANDROID_NDK_HOME = Join-Path $sdkInfo.Root 'ndk/28.2.13676358'
 if (!(Test-Path $env:ANDROID_NDK_HOME)) { throw 'Install Android NDK 28.2.13676358.' }
 if (!(Test-Path (Join-Path $native "engines/android/$Abi/libstockfish.so")) -or
     !(Test-Path (Join-Path $native "engines/android/$Abi/libfoxash.so"))) {
     throw "Run native/scripts/prepare-engines.ps1 -Platform Android -Abi $Abi -Ndk '$env:ANDROID_NDK_HOME' first."
 }
-$java = 'C:/Program Files/Java/jdk-21.0.11'
-if (!$env:JAVA_HOME -and (Test-Path $java)) { $env:JAVA_HOME = $java }
 $staging = Join-Path $native 'android/app/src/main/jniLibs'
 $rustArgs = @()
 $variant = if ($signedUpdate) { 'release' } else { 'debug' }
@@ -39,9 +36,8 @@ $signerPassword = $env:CHESSASH_SIGNING_PASSWORD
 Push-Location $native
 try {
     if ($signedUpdate) {
-        . (Join-Path $legacy 'scripts/android-env.ps1')
-        $storePath = Join-Path $legacy '.private/android-release.jks'
-        $passwordPath = Join-Path $legacy '.private/android-signing-password.dpapi'
+        $storePath = Join-Path $projectRoot '.private/android-release.jks'
+        $passwordPath = Join-Path $projectRoot '.private/android-signing-password.dpapi'
         if (!(Test-Path -LiteralPath $storePath) -or !(Test-Path -LiteralPath $passwordPath)) {
             throw 'Restore the existing ChessAsh Android key and its password file to build an update.'
         }
@@ -58,19 +54,18 @@ try {
     $env:CARGO_NDK_PLATFORM = '24'
     cargo ndk -t $Abi -o $staging build --lib @rustArgs
     if ($LASTEXITCODE) { throw 'Rust Android build failed.' }
-    $gradle = Join-Path $legacy 'android/gradlew.bat'
+    $gradle = Join-Path $native 'android/gradlew.bat'
     & $gradle --project-dir (Join-Path $native 'android') @gradleArgs
     if ($LASTEXITCODE) { throw 'Android APK packaging failed.' }
     $built = Join-Path $native "android/app/build/outputs/apk/$variant/app-$variant.apk"
     $previewDir = Join-Path $native 'runtime/previews'
     $name = "ChessAshNative-$Abi.apk"
     if ($signedUpdate) {
-        $sdkInfo = Find-ChessAshAndroidSdk $legacy (Get-ChessAshBuildEnvironment $legacy)
         $verification = & (Join-Path $sdkInfo.BuildTools 'apksigner.bat') verify --print-certs $built
         if ($LASTEXITCODE -ne 0 -or ($verification -join "`n") -notmatch 'Signer #1 certificate SHA-256 digest:\s*([a-fA-F0-9]+)' -or $Matches[1].ToLowerInvariant() -ne $expectedCertificate) {
             throw 'The APK does not match the existing ChessAsh signing key.'
         }
-        $version = Get-ChessAshAndroidVersion $legacy
+        $version = Get-ChessAshAndroidVersion $projectRoot
         $badging = & (Join-Path $sdkInfo.BuildTools 'aapt.exe') dump badging $built
         if ($LASTEXITCODE -ne 0 -or ($badging -join "`n") -notmatch "package: name='dev.flamedev.chessash' versionCode='$($version.Code)' versionName='$([regex]::Escape($version.Name))'") {
             throw 'The update package or version does not match ChessAsh.'

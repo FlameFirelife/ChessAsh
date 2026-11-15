@@ -16,18 +16,18 @@ pwsh -File native/scripts/prepare-engines.ps1 -Platform Windows
 
 The installer is written to `release\ChessAsh-Setup-1.6.0.exe`. Run it over the existing V1.5 installation with ChessAsh closed. Setup reads the existing library before replacing the old executable. The updated app opens saved games, reviews, notes, preferences, and training data on first launch.
 
-Run `cargo run --manifest-path native/Cargo.toml --bin chessash-native` for development. The default SQLite profile is `%LOCALAPPDATA%\ChessAsh Native`. Set `CHESSASH_NATIVE_DATA` for an isolated profile. To import a V1.5 library from another profile, export it with `native/migration/Export-Windows.ps1` and open the backup in Settings.
+Run `cargo run --manifest-path native/Cargo.toml --bin chessash-native` for development. The default SQLite profile is `%LOCALAPPDATA%\ChessAsh Native`. Set `CHESSASH_NATIVE_DATA` for an isolated profile. To import a V1.5 library from another profile, run `native/migration/Export-Windows.ps1` with `-ProfilePath`, `-OutputPath` and the path to an Electron executable under `-ElectronPath`. Open the exported backup in Settings.
 
 ## Android
 
-Use SDK 36, JDK 21, NDK 28.2.13676358 and `cargo-ndk`. Install the Rust target for the chosen ABI. Provide the SDK path in `ANDROID_HOME` or `android/local.properties`.
+Use SDK 36, JDK 21, NDK 28.2.13676358 and `cargo-ndk`. Install the Rust target for the chosen ABI. Provide the SDK path in `ANDROID_HOME` or `native/android/local.properties`.
 
 ```powershell
 pwsh -File native/scripts/prepare-engines.ps1 -Platform Android -Abi arm64-v8a -Ndk <ndk-directory>
-pwsh -File native/scripts/build-android.ps1 -Abi arm64-v8a -Release
+.\Build-Android.bat
 ```
 
-Use `x86_64` for an x86_64 emulator. The signed APK is written to `native/runtime/previews/` and uses the existing release key in `.private/`. Install it over V1.5 with the installed app still on the device. On first launch, ChessAsh reads its existing Android app storage and opens the saved library. The build without `-Release` creates a development APK.
+Use `x86_64` for an x86_64 emulator. The signed APK is written to `native/runtime/previews/` and uses the existing release key in `.private/`. Install it over V1.5 with the installed app still on the device. On first launch, ChessAsh reads its existing Android app storage and opens the saved library. Use `Build-Android.bat -Debug` for a separate development install.
 
 ## Verification
 

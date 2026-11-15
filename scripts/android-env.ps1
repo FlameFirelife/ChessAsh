@@ -64,19 +64,23 @@ function Find-ChessAshJava21($Config) {
     throw 'JDK 21 was not found. Install JDK 21 and set JAVA_HOME or javaHome in .private/build-env.json. A Java 17 installation is not sufficient.'
 }
 
-function Find-ChessAshAndroidSdk([string]$ProjectRoot, $Config) {
+function Find-ChessAshAndroidSdk([string]$ProjectRoot, $Config, [string]$ExplicitSdk) {
     $candidates = New-Object System.Collections.Generic.List[string]
-    foreach ($candidate in @($env:ANDROID_SDK_ROOT, $env:ANDROID_HOME, $Config['androidSdkRoot'])) { if ($candidate) { $candidates.Add($candidate) } }
-    $propertiesFile = Join-Path $ProjectRoot 'android\local.properties'
-    if (Test-Path -LiteralPath $propertiesFile) {
-        foreach ($line in (Get-Content -LiteralPath $propertiesFile)) {
-            if ($line -match '^sdk\.dir\s*=\s*(.+)$') { $candidates.Add($Matches[1].Replace('\\', '\').Replace('\:', ':')) }
+    if ($ExplicitSdk) {
+        $candidates.Add($ExplicitSdk)
+    } else {
+        foreach ($candidate in @($env:ANDROID_SDK_ROOT, $env:ANDROID_HOME, $Config['androidSdkRoot'])) { if ($candidate) { $candidates.Add($candidate) } }
+        $propertiesFile = Join-Path $ProjectRoot 'native\android\local.properties'
+        if (Test-Path -LiteralPath $propertiesFile) {
+            foreach ($line in (Get-Content -LiteralPath $propertiesFile)) {
+                if ($line -match '^sdk\.dir\s*=\s*(.+)$') { $candidates.Add($Matches[1].Replace('\\', '\').Replace('\:', ':')) }
+            }
         }
+        $candidates.Add((Join-Path $ProjectRoot 'work\android-sdk'))
+        if ($env:LOCALAPPDATA) { $candidates.Add((Join-Path $env:LOCALAPPDATA 'Android\Sdk')) }
     }
-    $candidates.Add((Join-Path $ProjectRoot 'work\android-sdk'))
-    if ($env:LOCALAPPDATA) { $candidates.Add((Join-Path $env:LOCALAPPDATA 'Android\Sdk')) }
-    $variables = Get-Content -Raw -LiteralPath (Join-Path $ProjectRoot 'android\variables.gradle')
-    if ($variables -notmatch 'compileSdkVersion\s*=\s*(\d+)') { throw 'Cannot read the Android compile SDK version.' }
+    $variables = Get-Content -Raw -LiteralPath (Join-Path $ProjectRoot 'native\android\app\build.gradle')
+    if ($variables -notmatch '(?m)^\s*compileSdk\s+(\d+)') { throw 'Cannot read the native Android compile SDK version.' }
     $api = $Matches[1]
     foreach ($candidate in ($candidates | Select-Object -Unique)) {
         if (-not (Test-Path -LiteralPath (Join-Path $candidate "platforms\android-$api\android.jar"))) { continue }
@@ -145,102 +149,4 @@ function Unprotect-ChessAshSigningPassword([string]$Encoded) {
     $bytes = [Security.Cryptography.ProtectedData]::Unprotect($encrypted, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)
     try { return [Text.Encoding]::Unicode.GetString($bytes) }
     finally { [Array]::Clear($bytes, 0, $bytes.Length) }
-}
-
-function Invoke-ChessAshAndroidBuild {
-    param([ValidateSet('Release', 'Debug')][string]$Configuration = 'Release', [switch]$SkipWebBuild)
-    $ErrorActionPreference = 'Stop'
-    $projectRoot = Split-Path $PSScriptRoot -Parent
-    $previousLocation = Get-Location
-    $previousEnvironment = @{}
-    foreach ($name in @('JAVA_HOME', 'ANDROID_SDK_ROOT', 'ANDROID_HOME', 'GRADLE_USER_HOME', 'CHESSASH_SIGNING_PASSWORD', 'CHESSASH_SIGNING_STORE')) { $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
-    $signingPassword = $null
-    $ownsBuildLock = $false
-    try {
-        Set-Location -LiteralPath $projectRoot
-        . (Join-Path $PSScriptRoot 'build-common.ps1')
-        $heldLock = Get-Variable -Name ChessAshBuildLockHeld -ErrorAction SilentlyContinue
-        $ownsBuildLock = -not ($heldLock -and [bool]$heldLock.Value)
-        Enter-ChessAshBuildLock
-        if (-not $SkipWebBuild) {
-            Initialize-ChessAshBuild -Platform Android
-        }
-        if (-not (Test-Path -LiteralPath 'dist\index.html')) { throw 'The application UI has not been built. Run Build-Android.bat first.' }
-        $config = Get-ChessAshBuildEnvironment $projectRoot
-        $env:JAVA_HOME = Find-ChessAshJava21 $config
-        $sdk = Find-ChessAshAndroidSdk $projectRoot $config
-        $env:ANDROID_SDK_ROOT = $sdk.Root
-        $env:ANDROID_HOME = $sdk.Root
-        if (-not $env:GRADLE_USER_HOME) { $env:GRADLE_USER_HOME = if ($config['gradleUserHome']) { $config['gradleUserHome'] } else { Join-Path $projectRoot 'work\gradle' } }
-        $version = Get-ChessAshAndroidVersion $projectRoot
-        $cap = Join-Path $projectRoot 'node_modules\.bin\cap.cmd'
-        if (-not (Test-Path -LiteralPath $cap)) { throw 'Capacitor dependencies are missing. Run Build-Android.bat first.' }
-        $propertyPath = Join-Path $projectRoot 'android\local.properties'
-        $properties = @()
-        if (Test-Path -LiteralPath $propertyPath) { $properties = @(Get-Content -LiteralPath $propertyPath | Where-Object { $_ -notmatch '^sdk\.dir\s*=' }) }
-        $properties += 'sdk.dir=' + $sdk.Root.Replace('\', '/')
-        [IO.File]::WriteAllLines($propertyPath, [string[]]$properties, (New-Object Text.UTF8Encoding($false)))
-        Write-Host "Android $Configuration build: ChessAsh $($version.Name), version code $($version.Code), JDK 21, SDK $($sdk.Api)."
-        if ($Configuration -eq 'Release') {
-            $privateRoot = Join-Path $projectRoot '.private'
-            New-Item -ItemType Directory -Path $privateRoot -Force | Out-Null
-            $storePath = Join-Path $privateRoot 'android-release.jks'
-            $passwordPath = Join-Path $privateRoot 'android-signing-password.dpapi'
-            $keytool = Join-Path $env:JAVA_HOME 'bin\keytool.exe'
-            if (-not (Test-Path -LiteralPath $storePath)) {
-                if (Test-Path -LiteralPath $passwordPath) { throw 'Signing password exists without its key. Restore the matching key; the build will not replace it.' }
-                $bytes = New-Object byte[] 32
-                $random = [Security.Cryptography.RandomNumberGenerator]::Create()
-                try { $random.GetBytes($bytes) } finally { $random.Dispose() }
-                $signingPassword = [Convert]::ToBase64String($bytes)
-                [IO.File]::WriteAllText($passwordPath, (Protect-ChessAshSigningPassword $signingPassword), (New-Object Text.UTF8Encoding($false)))
-                $env:CHESSASH_SIGNING_PASSWORD = $signingPassword
-                & $keytool -genkeypair -keystore $storePath -storepass:env CHESSASH_SIGNING_PASSWORD -keypass:env CHESSASH_SIGNING_PASSWORD -alias chessash -dname 'CN=ChessAsh local build' -keyalg RSA -keysize 3072 -validity 10000 -storetype PKCS12
-                if ($LASTEXITCODE) { throw 'Android signing key creation failed. Existing signing files have been preserved.' }
-            } else {
-                if (-not (Test-Path -LiteralPath $passwordPath)) { throw 'The signing key has no matching encrypted password. Restore the password file; the build will not replace the key.' }
-                try { $signingPassword = Unprotect-ChessAshSigningPassword ([IO.File]::ReadAllText($passwordPath)) }
-                catch { throw 'The signing password cannot be decrypted by this Windows account. Restore the matching password on its original account or migrate the key securely.' }
-                $env:CHESSASH_SIGNING_PASSWORD = $signingPassword
-            }
-            $env:CHESSASH_SIGNING_STORE = $storePath
-            $certificate = Get-AndroidProcessOutput $keytool @('-exportcert', '-rfc', '-keystore', $storePath, '-storepass:env', 'CHESSASH_SIGNING_PASSWORD', '-alias', 'chessash')
-            if ($certificate.ExitCode -ne 0 -or $certificate.Text -notmatch '(?s)-----BEGIN CERTIFICATE-----\s*(.*?)\s*-----END CERTIFICATE-----') { throw 'The existing signing key could not be opened. Its files have not been replaced.' }
-            $certBytes = [Convert]::FromBase64String(($Matches[1] -replace '\s', ''))
-            $sha = [Security.Cryptography.SHA256]::Create()
-            try { $expectedCertificate = ([BitConverter]::ToString($sha.ComputeHash($certBytes))).Replace('-', '').ToLowerInvariant() } finally { $sha.Dispose() }
-        }
-        & $cap sync android
-        if ($LASTEXITCODE) { throw 'Capacitor Android sync failed.' }
-        & (Join-Path $projectRoot 'android\gradlew.bat') -p android "assemble$Configuration" --console=plain "-PchessashVersion=$($version.Name)" "-PchessashVersionCode=$($version.Code)"
-        if ($LASTEXITCODE) { throw "Android $Configuration compilation failed." }
-        $kind = $Configuration.ToLowerInvariant()
-        $built = Join-Path $projectRoot "android\app\build\outputs\apk\$kind\app-$kind.apk"
-        if (-not (Test-Path -LiteralPath $built)) { throw 'Gradle did not produce the expected APK.' }
-        $verification = & (Join-Path $sdk.BuildTools 'apksigner.bat') verify --verbose --print-certs $built
-        if ($LASTEXITCODE) { throw 'APK signature verification failed.' }
-        $verifiedText = $verification -join "`n"
-        if ($verifiedText -notmatch 'Signer #1 certificate SHA-256 digest:\s*([a-fA-F0-9]+)') { throw 'The APK signer certificate could not be read.' }
-        $actualCertificate = $Matches[1].ToLowerInvariant()
-        if ($Configuration -eq 'Release' -and $actualCertificate -ne $expectedCertificate) { throw 'The APK does not match the preserved release signing key.' }
-        $badging = & (Join-Path $sdk.BuildTools 'aapt.exe') dump badging $built
-        if ($LASTEXITCODE -or (($badging -join "`n") -notmatch "versionCode='$($version.Code)' versionName='$([regex]::Escape($version.Name))'")) { throw 'The built APK version does not match the release metadata.' }
-        $suffix = if ($Configuration -eq 'Debug') { '-debug' } else { '' }
-        $destination = Join-Path $projectRoot "release\ChessAsh-$($version.Name)-android$suffix.apk"
-        New-Item -ItemType Directory -Path (Split-Path $destination -Parent) -Force | Out-Null
-        Copy-Item -LiteralPath $built -Destination $destination -Force
-        $hash = Get-ChessAshAndroidFileHash $destination
-        $report = [ordered]@{ product = 'ChessAsh'; version = $version.Name; androidVersionCode = $version.Code; configuration = $Configuration; signatureVerified = $true; certificateSha256 = $actualCertificate; apkSha256 = $hash; apk = (Split-Path $destination -Leaf); verifiedAt = [DateTime]::UtcNow.ToString('o') }
-        [IO.File]::WriteAllText(($destination + '.build.json'), ($report | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
-        Write-Host "APK ready: $destination"
-        Write-Host "Signature verified. SHA-256: $hash"
-    } finally {
-        if ($ownsBuildLock -and (Get-Command Exit-ChessAshBuildLock -ErrorAction SilentlyContinue)) { Exit-ChessAshBuildLock }
-        foreach ($name in $previousEnvironment.Keys) {
-            if ($null -eq $previousEnvironment[$name]) { Remove-Item -LiteralPath ("Env:" + $name) -ErrorAction SilentlyContinue }
-            else { Set-Item -LiteralPath ("Env:" + $name) -Value $previousEnvironment[$name] }
-        }
-        $signingPassword = $null
-        Set-Location -LiteralPath $previousLocation.Path
-    }
 }

@@ -25,7 +25,7 @@ The build validates the certificate before packaging, signs `work/native-windows
 
 With no identity configured, `Build-Windows.bat` warns and builds unsigned for local testing. `-RequireSigned` fails before packaging if no usable identity exists. An invalid configured identity stops the build rather than silently producing an unsigned installer.
 
-No trusted Windows signing certificate is configured for the v1.5 source build. The signed build path has not been exercised with a real certificate. Cloud signing services need their own approved account and integration; this local certificate-store setup does not configure those services automatically.
+The published V1.6 Windows installer was built without a trusted signing certificate. The signed build path has not been exercised with a real certificate. Cloud signing services need their own approved account and integration; this local certificate-store setup does not configure those services automatically.
 
 [SignPath Foundation](https://signpath.org/apply) accepts applications for free open-source signing, subject to its [conditions and review](https://signpath.org/terms). Its certificate identifies SignPath Foundation as publisher.
 

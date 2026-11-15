@@ -11,7 +11,7 @@
   #define ProjectRoot AddBackslash(SourcePath) + ".."
 #endif
 #ifndef AppSourceDir
-  #define AppSourceDir ProjectRoot + "\release\win-unpacked"
+  #define AppSourceDir ProjectRoot + "\work\native-windows"
 #endif
 #ifndef AppDocsDir
   #define AppDocsDir ProjectRoot + "\work\release-docs"

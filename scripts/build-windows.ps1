@@ -1,4 +1,4 @@
-param([switch]$SkipWebBuild, [switch]$RequireSigned, [switch]$InstallerTest)
+param([switch]$RequireSigned, [switch]$InstallerTest)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
@@ -34,12 +34,7 @@ try {
     $settings = Get-Content -LiteralPath 'build/release.json' -Raw | ConvertFrom-Json
     $version = [string]$package.version
     if ($version -notmatch '^\d+\.\d+\.\d+(?:\.\d+)?$') { throw 'Inno builds require a numeric major.minor.patch[.build] package version.' }
-    $nativeBuild = [version]$version -ge [version]'1.6'
-    if ($nativeBuild) {
-        Enter-ChessAshBuildLock
-    } else {
-        Initialize-ChessAshBuild -Platform Windows -SkipWebBuild:$SkipWebBuild
-    }
+    Enter-ChessAshBuildLock
     $docsPath = [IO.Path]::GetFullPath((Join-Path $projectRoot 'work\release-docs'))
     $workRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot 'work')) + [IO.Path]::DirectorySeparatorChar
     if (-not $docsPath.StartsWith($workRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Invalid documentation staging path.' }
@@ -57,38 +52,35 @@ try {
     }
     Write-Host 'Preparing the Windows application...'
     $arguments = @('/Qp', "/DProjectRoot=$projectRoot", "/DAppVersion=$version", "/DAppPublisher=$($settings.publisher)", "/DAppURL=$($settings.publisherURL)", (Join-Path $projectRoot 'installer\ChessAsh.iss'))
-    if ($nativeBuild) {
-        $source = Join-Path $projectRoot 'work/native-windows'
-        $engines = Join-Path $projectRoot 'native/engines/windows'
-        foreach ($name in @('stockfish.exe', 'foxash.exe')) {
-            if (!(Test-Path -LiteralPath (Join-Path $engines $name))) {
-                throw 'Provision the Windows engines with native/scripts/prepare-engines.ps1 first.'
-            }
+    $source = Join-Path $projectRoot 'work/native-windows'
+    $engines = Join-Path $projectRoot 'native/engines/windows'
+    foreach ($name in @('stockfish.exe', 'foxash.exe')) {
+        if (!(Test-Path -LiteralPath (Join-Path $engines $name))) {
+            throw 'Provision the Windows engines with native/scripts/prepare-engines.ps1 first.'
         }
-        & cargo build --release --manifest-path native/Cargo.toml --target-dir native/target --bin chessash-native
-        if ($LASTEXITCODE) { throw "Windows application build failed ($LASTEXITCODE)." }
-        New-Item -ItemType Directory -Force -Path $source, (Join-Path $source 'engines') | Out-Null
-        $exe = Join-Path $source 'ChessAsh.exe'
-        Copy-Item -LiteralPath 'native/target/release/chessash-native.exe' -Destination $exe -Force
-        Copy-Item -LiteralPath 'build/icon.ico' -Destination (Join-Path $source 'ChessAsh.ico') -Force
-        Get-ChildItem -LiteralPath $engines -File | Where-Object {
-            $_.Name -in @('stockfish.exe', 'stockfish-avx2.exe', 'foxash.exe',
-                'STOCKFISH-LICENSE.txt', 'FOXASH-LICENSE.txt', 'nn-61e7af4bb97d.nnue')
-        } | Copy-Item -Destination (Join-Path $source 'engines') -Force
-
-        $transferSource = Join-Path $projectRoot 'work/native-windows-transfer'
-        $transferHelper = Join-Path $projectRoot 'work/chessash-transfer.asar'
-        New-Item -ItemType Directory -Force -Path $transferSource | Out-Null
-        Copy-Item -LiteralPath 'native/migration/export-windows.cjs','native/migration/legacy-origin.html','native/migration/web' -Recurse -Destination $transferSource -Force
-        [IO.File]::WriteAllText((Join-Path $transferSource 'package.json'), '{"name":"chessash-library-transfer","main":"export-windows.cjs","version":"1.0.0"}')
-        & node -e "require('@electron/asar').createPackage(process.argv[1], process.argv[2]).catch(error => { console.error(error.message); process.exitCode = 1; })" $transferSource $transferHelper
-        if ($LASTEXITCODE) { throw 'The Windows library transfer helper could not be packaged.' }
-        $arguments = @('/DNativeBuild', "/DAppSourceDir=$source", "/DWindowsTransferHelper=$transferHelper") + $arguments
-    } else {
-        & npx.cmd --no-install electron-builder --win --x64 --dir
-        if ($LASTEXITCODE) { throw "Windows application build failed ($LASTEXITCODE)." }
-        $exe = Join-Path $projectRoot 'release/win-unpacked/ChessAsh.exe'
     }
+    & cargo build --release --manifest-path native/Cargo.toml --target-dir native/target --bin chessash-native
+    if ($LASTEXITCODE) { throw "Windows application build failed ($LASTEXITCODE)." }
+    New-Item -ItemType Directory -Force -Path $source, (Join-Path $source 'engines') | Out-Null
+    $exe = Join-Path $source 'ChessAsh.exe'
+    Copy-Item -LiteralPath 'native/target/release/chessash-native.exe' -Destination $exe -Force
+    Copy-Item -LiteralPath 'build/icon.ico' -Destination (Join-Path $source 'ChessAsh.ico') -Force
+    Get-ChildItem -LiteralPath $engines -File | Where-Object {
+        $_.Name -in @('stockfish.exe', 'stockfish-avx2.exe', 'foxash.exe',
+            'STOCKFISH-LICENSE.txt', 'FOXASH-LICENSE.txt', 'nn-61e7af4bb97d.nnue')
+    } | Copy-Item -Destination (Join-Path $source 'engines') -Force
+
+    $transferSource = Join-Path $projectRoot 'work/native-windows-transfer'
+    $transferHelper = Join-Path $projectRoot 'work/chessash-transfer.asar'
+    New-Item -ItemType Directory -Force -Path $transferSource | Out-Null
+    Copy-Item -LiteralPath 'native/migration/export-windows.cjs','native/migration/legacy-origin.html','native/migration/web' -Recurse -Destination $transferSource -Force
+    [IO.File]::WriteAllText((Join-Path $transferSource 'package.json'), '{"name":"chessash-library-transfer","main":"export-windows.cjs","version":"1.0.0"}')
+    if (!(Test-Path -LiteralPath 'node_modules/@electron/asar/package.json')) {
+        throw 'Run npm ci to install the Windows library transfer packager.'
+    }
+    & node -e "require('@electron/asar').createPackage(process.argv[1], process.argv[2]).catch(error => { console.error(error.message); process.exitCode = 1; })" $transferSource $transferHelper
+    if ($LASTEXITCODE) { throw 'The Windows library transfer helper could not be packaged.' }
+    $arguments = @('/DNativeBuild', "/DAppSourceDir=$source", "/DWindowsTransferHelper=$transferHelper") + $arguments
     if (!(Test-Path -LiteralPath $exe)) { throw 'The application executable was not produced.' }
     if ($signingEnabled) { & $signingScript -Path $exe }
     $output = Join-Path $projectRoot "release\ChessAsh-Setup-$version.exe"

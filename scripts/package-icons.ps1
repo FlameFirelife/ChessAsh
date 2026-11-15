@@ -31,8 +31,4 @@ $writer.Write([uint16]0); $writer.Write([uint16]1); $writer.Write([uint16]1)
 $writer.Write([byte]0); $writer.Write([byte]0); $writer.Write([byte]0); $writer.Write([byte]0)
 $writer.Write([uint16]1); $writer.Write([uint16]32); $writer.Write([uint32]$pngBytes.Length); $writer.Write([uint32]22); $writer.Write($pngBytes)
 $writer.Dispose()
-$densities = @{mdpi=48;hdpi=72;xhdpi=96;xxhdpi=144;xxxhdpi=192}
-foreach ($density in $densities.Keys) {
-    $folder = Join-Path $projectRoot "android\app\src\main\res\mipmap-$density"
-    foreach ($name in @('ic_launcher.png','ic_launcher_round.png','ic_launcher_foreground.png')) { Draw-ChessAshIcon $densities[$density] (Join-Path $folder $name) }
-}
+Draw-ChessAshIcon 256 (Join-Path $projectRoot 'native/assets/android/drawable-nodpi/chessash_icon.png')

@@ -15,10 +15,7 @@ const excludedNames = new Set([
   'NATIVE_REBUILD.md',
 ]);
 const generatedPaths = [
-  'android/build', 'android/app/build', 'android/capacitor-cordova-android-plugins',
-  'android/app/src/main/assets/capacitor.config.json',
-  'android/app/src/main/assets/capacitor.plugins.json', 'android/app/src/main/res/xml/config.xml',
-  'android/app/src/main/assets/public', 'native/android/build', 'native/android/app/build',
+  'native/android/build', 'native/android/app/build',
   'native/android/app/src/main/jniLibs', 'native/engines', 'native/runtime',
 ];
 
