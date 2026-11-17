@@ -4,6 +4,7 @@ mod audio;
 mod board;
 mod card;
 mod import;
+mod live_game;
 mod platform;
 mod training_ui;
 #[cfg(windows)]

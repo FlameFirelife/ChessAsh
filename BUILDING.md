@@ -1,6 +1,6 @@
 # Build ChessAsh
 
-Windows x64 and Android share the Rust app under `native/`. The source version is 1.6.0 and the Android version code is 10. Run the BAT launchers from a Windows checkout with PowerShell 7 and a stable Rust toolchain.
+Windows x64 and Android share the Rust app under `native/`. The source version is 1.7.0 and the Android version code is 11. Run the BAT launchers from a Windows checkout with PowerShell 7 and a stable Rust toolchain.
 
 ## Windows
 
@@ -12,7 +12,7 @@ pwsh -File native/scripts/prepare-engines.ps1 -Platform Windows
 .\Build-Windows.bat
 ```
 
-The Windows launcher builds the Rust executable and writes `release/ChessAsh-Setup-1.6.0.exe`. The small npm dependency packages the V1.5 library transfer helper. Use `-RequireSigned` with a configured certificate. [Signing instructions](SIGNING.md)
+The Windows launcher builds the Rust executable and writes `release/ChessAsh-Setup-1.7.0.exe`. The small npm dependency packages the V1.5 library transfer helper. Use `-RequireSigned` with a configured certificate. [Signing instructions](SIGNING.md)
 
 ## Android
 
@@ -24,7 +24,7 @@ pwsh -File native/scripts/prepare-engines.ps1 -Platform Android -Abi arm64-v8a -
 .\Build-Android.bat
 ```
 
-The Android launcher builds an optimized, signed ARM64 APK for in-place updates. It writes `native/runtime/previews/ChessAsh-1.6.0-android-arm64-v8a.apk`. Use `-Abi x86_64` with the matching engines and Rust target for an emulator. Use `-Debug` for a separate debug install.
+The Android launcher builds an optimized, signed ARM64 APK for in-place updates. It writes `native/runtime/previews/ChessAsh-1.7.0-android-arm64-v8a.apk`. Use `-Abi x86_64` with the matching engines and Rust target for an emulator. Use `-Debug` for a separate debug install.
 
 Set `JAVA_HOME`, `ANDROID_HOME` or `ANDROID_SDK_ROOT` if the tools are not found. Alternatively use `native/android/local.properties` or the existing local `.private/build-env.json` settings `javaHome`, `androidSdkRoot` and `gradleUserHome`. Keep the Android update key and its Windows-protected password backed up outside the checkout. [Signing instructions](SIGNING.md)
 

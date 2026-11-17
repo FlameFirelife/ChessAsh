@@ -20,6 +20,9 @@ use eframe::egui::{self, Color32, RichText, Vec2};
 use serde::{Deserialize, Serialize};
 use shakmaty::Position;
 
+#[path = "live_ui.rs"]
+mod live_ui;
+
 use crate::{
     accounts::{self, Account, Library, Sync},
     appearance::{self, ACCENT, Art, BLUE, COACH, COACH_INK, Icon},
@@ -35,6 +38,7 @@ enum Screen {
     Review,
     Library,
     Training,
+    Play,
 }
 
 #[derive(Clone, Copy, Default, PartialEq)]
@@ -153,6 +157,7 @@ pub struct ChessAsh {
     #[cfg(windows)]
     tutor: crate::tutor::Tutor,
     training: crate::training_ui::Training,
+    live: live_ui::LiveUi,
 }
 
 impl ChessAsh {
@@ -274,6 +279,7 @@ impl ChessAsh {
             #[cfg(windows)]
             tutor,
             training: Default::default(),
+            live: Default::default(),
         };
         if let Some(game) = game {
             app.select(game);
@@ -775,18 +781,25 @@ impl ChessAsh {
 
     fn nav(&mut self, ui: &mut egui::Ui, narrow: bool) {
         let split = narrow && self.screen != Screen::Review;
+        let compact = narrow || ui.available_width() < 720.0;
         if split {
+            let icon_import = ui.available_width() < 390.0;
             ui.horizontal(|ui| {
                 self.art.icon(ui, Icon::Flame, 23.0, ACCENT);
                 ui.label(RichText::new("ChessAsh").size(21.0).strong());
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui
-                        .add_enabled(
+                    let import = self.tr("Import game", "Importa partita");
+                    let clicked = if icon_import {
+                        ui.add_enabled_ui(self.events.is_none(), |ui| {
+                            self.art.icon_button(ui, Icon::Plus, import, Vec2::splat(36.0))
+                        }).inner.clicked()
+                    } else {
+                        ui.add_enabled(
                             self.events.is_none(),
-                            appearance::primary("+  Import game").min_size(Vec2::new(110.0, 39.0)),
-                        )
-                        .clicked()
-                    {
+                            appearance::primary(&format!("+  {import}")).min_size(Vec2::new(110.0, 39.0)),
+                        ).clicked()
+                    };
+                    if clicked {
                         self.dialog = Some(Dialog::Import);
                     }
                     if self
@@ -801,7 +814,7 @@ impl ChessAsh {
             ui.add_space(10.0);
         }
         ui.horizontal(|ui| {
-            if !narrow {
+            if !compact {
                 self.art.icon(ui, Icon::Flame, 23.0, ACCENT);
                 ui.spacing_mut().item_spacing.x = 2.0;
                 ui.label(RichText::new("Chess").size(21.0).strong());
@@ -817,18 +830,12 @@ impl ChessAsh {
                 ui.add_space(34.0);
                 ui.spacing_mut().item_spacing.x = 8.0;
             }
-            let reserve = if split {
-                0.0
-            } else if narrow {
-                82.0
-            } else {
-                165.0
-            };
-            let nav_width = if narrow {
-                ((ui.available_width() - reserve - 4.0 * ui.spacing().item_spacing.x) / 3.0)
+            let reserve = if split { 0.0 } else if compact { 82.0 } else { 165.0 };
+            let nav_width = if compact {
+                ((ui.available_width() - reserve - 4.0 * ui.spacing().item_spacing.x) / 4.0)
                     .max(30.0)
             } else {
-                99.0
+                94.0
             };
             for (screen, text, icon) in [
                 (Screen::Review, self.tr("Review", "Analisi"), Icon::Book),
@@ -837,7 +844,8 @@ impl ChessAsh {
                     self.tr("Library", "Archivio"),
                     Icon::Library,
                 ),
-                (Screen::Training, self.tr("Training", "Pratica"), Icon::Play),
+                (Screen::Training, self.tr("Training", "Pratica"), Icon::Check),
+                (Screen::Play, self.tr("Play", "Gioca"), Icon::Play),
             ] {
                 let title = if screen == Screen::Library {
                     format!("{text}  {}", self.games.len())
@@ -847,15 +855,17 @@ impl ChessAsh {
 
                 let color = if self.screen == screen {
                     ui.visuals().text_color()
-                } else {
+                } else if ui.visuals().dark_mode {
                     Color32::from_rgb(191, 203, 180)
+                } else {
+                    Color32::from_rgb(68, 68, 65)
                 };
                 let fill = if self.screen == screen {
                     ui.visuals().window_fill
                 } else {
                     Color32::TRANSPARENT
                 };
-                let response = if narrow {
+                let response = if compact {
                     ui.add_sized(
                         [nav_width, 40.0],
                         egui::Button::new(RichText::new(title).size(12.0).color(color))
@@ -885,13 +895,13 @@ impl ChessAsh {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
                         .add_sized(
-                            [if narrow { 36.0 } else { 132.0 }, 40.0],
+                            [if compact { 36.0 } else { 132.0 }, 40.0],
                             egui::Button::image_and_text(
                                 egui::Image::new((
                                     self.art.icons[Icon::Plus as usize].id(),
                                     Vec2::splat(17.0),
                                 )),
-                                RichText::new(if narrow { "" } else { "Import game" })
+                                RichText::new(if compact { "" } else { self.tr("Import game", "Importa partita") })
                                     .size(14.0)
                                     .strong()
                                     .color(appearance::INK),
@@ -914,6 +924,61 @@ impl ChessAsh {
                 });
             }
         });
+    }
+
+    fn live_game(&mut self, ui: &mut egui::Ui, mobile: bool) {
+        let options = live_ui::View {
+            board: &self.board,
+            platform: &self.platform,
+            sound: &mut self.sound,
+            prefs: &self.prefs,
+            italian: self.italian,
+            mobile,
+            store: self.store.as_ref(),
+        };
+        match self.live.show(ui, options) {
+            Some(live_ui::Action::Save(mut game)) => {
+                let current = self.game.as_ref().filter(|current| current.id == game.id);
+                if self.events.is_some() && current.is_some() {
+                    self.live.save_error(self.tr(
+                        "Wait for the Library review to finish, then save again.",
+                        "Attendi la fine dell’analisi in archivio, poi salva di nuovo.",
+                    ).to_owned());
+                    return;
+                }
+                if let Some(saved) = current.or_else(|| self.games.iter().find(|existing| existing.id == game.id)) {
+                    game.notes.clone_from(&saved.notes);
+                    game.review_as = saved.review_as;
+                    game.last_ply = saved.last_ply;
+                    if saved.moves.len() == game.moves.len()
+                        && saved.review.as_ref().is_some_and(|review| review.completed)
+                    {
+                        game.review.clone_from(&saved.review);
+                    }
+                }
+                let unavailable = self.tr("Library storage is unavailable.", "Archivio non disponibile.");
+                let result = self.store.as_mut().ok_or_else(|| unavailable.to_owned())
+                    .and_then(|store| store.save_game(&game).map_err(|error| error.to_string()));
+                match result {
+                    Ok(()) => {
+                        let id = game.id.clone();
+                        if let Some(current) = self.game.as_mut().filter(|current| current.id == id) {
+                            *current = game.clone();
+                        }
+                        if let Some(saved) = self.games.iter_mut().find(|saved| saved.id == id) {
+                            *saved = game;
+                        } else {
+                            self.games.push(game);
+                        }
+                        accounts::sort_games(&mut self.games);
+                        self.live.saved();
+                    }
+                    Err(error) => self.live.save_error(error),
+                }
+            }
+            Some(live_ui::Action::OpenLibrary) => self.screen = Screen::Library,
+            None => {}
+        }
     }
 
     fn review_ui(&mut self, ui: &mut egui::Ui, mobile: bool) {
@@ -1755,6 +1820,7 @@ impl eframe::App for ChessAsh {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.receive();
+        self.live.receive();
         let ctx = ui.ctx().clone();
         #[cfg(target_os = "android")]
         self.poll_migration(&ctx);
@@ -1829,6 +1895,7 @@ impl eframe::App for ChessAsh {
                 Screen::Review => "review-scroll",
                 Screen::Library => "library-scroll",
                 Screen::Training => "training-scroll",
+                Screen::Play => "play-scroll",
             })
             .auto_shrink([false, false])
             .max_height((ui.available_height() - bottom / scale).max(1.0))
@@ -1836,7 +1903,7 @@ impl eframe::App for ChessAsh {
                 ui.set_width(content_width.min(ui.available_width()));
                 egui::Frame::new()
                     .inner_margin(egui::Margin::symmetric(
-                        if narrow { 12 } else if self.screen == Screen::Training { 24 } else { 0 },
+                        if narrow { 12 } else if matches!(self.screen, Screen::Training | Screen::Play) { 24 } else { 0 },
                         if narrow { 5 } else { 19 },
                     ))
                     .show(ui, |ui| {
@@ -1846,6 +1913,7 @@ impl eframe::App for ChessAsh {
                         match self.screen {
                             Screen::Review => self.review_ui(ui, narrow),
                             Screen::Library => self.library(ui),
+                            Screen::Play => self.live_game(ui, narrow),
                             Screen::Training => {
                                 match self.training.show(
                                     ui,

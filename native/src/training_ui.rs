@@ -5,7 +5,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         mpsc::{self, Receiver, TryRecvError},
     },
-    time::{Instant, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use chessash_persistence::Store;
@@ -57,6 +57,7 @@ pub struct Training {
     selected: Option<usize>,
     promotion: Option<(String, String)>,
     motion: Option<Instant>,
+    success: Option<Instant>,
     pending: Option<Receiver<Event>>,
     cancel: Option<Arc<AtomicBool>>,
     error: String,
@@ -113,6 +114,8 @@ impl Training {
             self.revision = revision;
             self.selected = None;
             self.promotion = None;
+            self.motion = None;
+            self.success = None;
             self.error.clear();
             self.dirty = false;
             self.prepare_queue(ui.ctx(), platform);
@@ -124,60 +127,51 @@ impl Training {
         let previous_motion = self.motion;
         self.poll();
 
-        let action = if self.data.session.is_empty() {
-            self.overview(ui, board, platform, italian)
-        } else {
-            ui.horizontal(|ui| {
-                ui.heading(tr(italian, "Training", "Allenamento"));
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui
-                        .button(tr(italian, "Back to training", "Torna all’allenamento"))
-                        .clicked()
-                    {
-                        self.begin(Vec::new());
-                        self.prepare_queue(ui.ctx(), platform);
-                    }
-                });
-            });
-            ui.add_space(8.0);
-            if self.data.session.is_empty() {
-                self.overview(ui, board, platform, italian)
-            } else if let Some(card) = self.data.session.get(self.data.index).cloned() {
-                let game = games.iter().find(|game| game.id == card.game_id);
-                if ui.available_width() >= 710.0 {
-                    ui.spacing_mut().item_spacing.x = 16.0;
-                    ui.columns(2, |columns| {
-                        panel(&mut columns[0], |ui| {
-                            self.practice_board(
+        let start = ui.next_widget_position();
+        let page = (self.data.session.is_empty(), self.data.index);
+        let width = ui.available_width().min(1020.0);
+        let action = ui
+            .vertical_centered(|ui| {
+                ui.allocate_ui_with_layout(
+                    Vec2::new(width, 0.0),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| {
+                        ui.set_width(width);
+                        ui.spacing_mut().interact_size.y = 42.0;
+                        ui.spacing_mut().item_spacing = Vec2::new(12.0, 8.0);
+                        ui.spacing_mut().button_padding.x = 10.0;
+                        let action = if self.data.session.is_empty() {
+                            self.overview(ui, board, platform, italian)
+                        } else if let Some(card) = self.data.session.get(self.data.index).cloned() {
+                            let game = games.iter().find(|game| game.id == card.game_id);
+                            self.practice_ui(
                                 ui,
                                 board,
                                 platform,
                                 &card,
+                                game,
                                 italian,
                                 reduced_motion,
-                            );
-                        });
-                        panel(&mut columns[1], |ui| {
-                            self.exercise_heading(ui, &card, italian);
-                            self.exercise(ui, platform, &card, game, italian)
-                        })
-                    })
-                } else {
-                    panel(ui, |ui| {
-                        self.exercise_heading(ui, &card, italian);
-                        ui.add_space(10.0);
-                        self.practice_board(ui, board, platform, &card, italian, reduced_motion);
-                        ui.add_space(10.0);
-                        self.exercise(ui, platform, &card, game, italian)
-                    })
-                }
-            } else {
-                self.recap(ui, italian);
-                None
-            }
-        };
-        if !self.error.is_empty() {
-            ui.colored_label(Color32::LIGHT_RED, &self.error);
+                            )
+                        } else {
+                            self.recap(ui, platform, italian);
+                            None
+                        };
+                        if !self.error.is_empty() {
+                            ui.colored_label(feedback_ink(ui, PracticeState::Error), &self.error);
+                        }
+                        action
+                    },
+                )
+                .inner
+            })
+            .inner;
+        if page != (self.data.session.is_empty(), self.data.index) {
+            ui.scroll_to_rect(
+                egui::Rect::from_min_size(start, Vec2::ZERO),
+                Some(egui::Align::Min),
+            );
+            ui.ctx().request_repaint();
         }
         if sound_enabled && self.motion.is_some() && self.motion != previous_motion {
             sound.play(platform);
@@ -192,6 +186,40 @@ impl Training {
         action
     }
 
+    fn practice_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        board: &Board,
+        platform: &Platform,
+        card: &TrainingCard,
+        game: Option<&Game>,
+        italian: bool,
+        reduced_motion: bool,
+    ) -> Option<TrainingAction> {
+        if self.practice_header(ui, card, italian) {
+            self.back_to_training(ui, platform);
+            return None;
+        }
+        ui.add_space(8.0);
+        if ui.available_width() >= 740.0 {
+            ui.columns(2, |columns| {
+                self.practice_board(
+                    &mut columns[0],
+                    board,
+                    platform,
+                    card,
+                    italian,
+                    reduced_motion,
+                );
+                self.exercise(&mut columns[1], platform, card, game, italian)
+            })
+        } else {
+            self.practice_board(ui, board, platform, card, italian, reduced_motion);
+            ui.add_space(6.0);
+            self.exercise(ui, platform, card, game, italian)
+        }
+    }
+
     fn practice_board(
         &mut self,
         ui: &mut egui::Ui,
@@ -202,13 +230,13 @@ impl Training {
         reduced_motion: bool,
     ) {
         let viewport = ui.ctx().content_rect();
-        let reserved = if viewport.width() < 710.0 {
-            448.0
+        let reserved = if viewport.width() < 790.0 {
+            365.0
         } else {
-            210.0
+            235.0
         };
         let size = (viewport.height() - reserved)
-            .clamp(220.0, 475.0)
+            .clamp(208.0, 540.0)
             .min(ui.available_width());
         let parsed = parse_fen(&self.data.fen).ok();
         let transition = self
@@ -222,14 +250,21 @@ impl Training {
                 reverse: false,
                 fast: false,
             });
+        let flipped = card.result.color == Color::Black;
+        let success = self
+            .success
+            .filter(|_| !reduced_motion)
+            .and_then(|started| Instant::now().checked_duration_since(started))
+            .map(|elapsed| elapsed.as_secs_f32() / 0.30)
+            .filter(|&phase| phase < 1.0);
         let click = ui
             .vertical_centered(|ui| {
-                board.show(
+                board.show_with_effects(
                     ui,
                     BoardView {
                         fen: &self.data.fen,
                         size,
-                        flipped: card.result.color == Color::Black,
+                        flipped,
                         last: &self.data.r#move,
                         best: if self.data.state == PracticeState::Revealed {
                             &card.result.best
@@ -242,6 +277,27 @@ impl Training {
                         transition,
                         check: parsed.as_ref().is_some_and(Position::is_check),
                         mate: parsed.as_ref().is_some_and(Position::is_checkmate),
+                    },
+                    |ui, rect| {
+                        if let Some(phase) = success
+                            && let Some((_, target)) = board::squares(&self.data.r#move)
+                        {
+                            let target = if flipped { 63 - target } else { target };
+                            let cell = rect.width() / 8.0;
+                            let center = rect.min
+                                + Vec2::new((target % 8) as f32 + 0.5, (target / 8) as f32 + 0.5)
+                                    * cell;
+                            let eased = 1.0 - (1.0 - phase).powi(2);
+                            ui.painter_at(rect).circle_stroke(
+                                center,
+                                cell * (0.38 + 0.29 * eased),
+                                egui::Stroke::new(
+                                    2.0_f32,
+                                    Color32::from_rgb(234, 250, 191).gamma_multiply(1.0 - eased),
+                                ),
+                            );
+                            ui.ctx().request_repaint();
+                        }
                     },
                 )
             })
@@ -398,6 +454,7 @@ impl Training {
         self.error.clear();
         self.data.state = PracticeState::Checking;
         self.data.fen = play.fen.clone();
+        self.success = None;
         self.data.r#move.clone_from(&uci);
         self.data.attempt.clone_from(&uci);
         self.data.reply.clear();
@@ -512,6 +569,10 @@ impl Training {
             self.show_solution(&card);
         } else {
             self.data.state = if solved {
+                let received = Instant::now();
+                self.success = Some(self.motion.map_or(received, |started| {
+                    received.max(started + Duration::from_millis(160))
+                }));
                 PracticeState::Correct
             } else {
                 PracticeState::Missed
@@ -540,6 +601,7 @@ impl Training {
         self.selected = None;
         self.promotion = None;
         self.motion = None;
+        self.success = None;
         self.data = ResumedTraining {
             fen: cards
                 .first()
@@ -557,6 +619,7 @@ impl Training {
         self.selected = None;
         self.promotion = None;
         self.motion = None;
+        self.success = None;
         self.error.clear();
         self.data.state = PracticeState::Ready;
         self.data.fen = self
@@ -609,78 +672,28 @@ impl Training {
         platform: &Platform,
         italian: bool,
     ) -> Option<TrainingAction> {
+        ui.label(title(tr(italian, "Training", "Allenamento"), 30.0));
+        ui.add_space(4.0);
         let due = if self.ready {
             training_queue(&self.cards, &self.history, now(), Some(&self.priorities))
         } else {
             Vec::new()
         };
-        let mut action = None;
-        let wide = ui.available_width() >= 710.0;
-        ui.spacing_mut().item_spacing.x = 14.0;
-        if wide {
-            ui.columns(2, |columns| {
-                action = self.session_panel(&mut columns[0], board, platform, &due, italian);
-                self.progress_panel(&mut columns[1], italian);
-            });
-        } else {
-            action = self.session_panel(ui, board, platform, &due, italian);
-        }
+        let session = mixed_training_session(&due, 5);
+        let action = self.session_panel(ui, board, platform, &session, italian);
+        ui.add_space(12.0);
         if self.ready && !self.cards.is_empty() {
-            ui.add_space(18.0);
-            ui.heading(tr(italian, "Practice by pattern", "Allenati per schema"));
-            ui.add_space(5.0);
-            let patterns = TRAINING_FOCUSES
-                .into_iter()
-                .filter(|pattern| self.cards.iter().any(|card| card.pattern == *pattern))
-                .collect::<Vec<_>>();
-            let columns = if wide {
-                3
-            } else if ui.available_width() >= 340.0 {
-                2
-            } else {
-                1
-            };
-            for row in patterns.chunks(columns) {
-                ui.columns(columns, |cells| {
-                    for (ui, &pattern) in cells.iter_mut().zip(row) {
-                        let available = due.iter().filter(|card| card.pattern == pattern).count();
-                        panel(ui, |ui| {
-                            ui.set_min_height(100.0);
-                            ui.strong(focus_name(pattern, italian));
-                            if available > 0 {
-                                let ready = if italian {
-                                    format!("Pronte: {available}")
-                                } else {
-                                    format!("{available} ready")
-                                };
-                                ui.small(ready);
-                            } else {
-                                ui.small(tr(italian, "Due later", "Da ripassare più avanti"));
-                            }
-                            ui.add_space(7.0);
-                            if ui
-                                .add_enabled(
-                                    available > 0,
-                                    egui::Button::new(tr(italian, "Practice", "Allenati")),
-                                )
-                                .clicked()
-                            {
-                                let cards = due
-                                    .iter()
-                                    .filter(|card| card.pattern == pattern)
-                                    .take(5)
-                                    .cloned()
-                                    .collect();
-                                self.begin(cards);
-                            }
-                        });
-                    }
+            if ui.available_width() >= 740.0 {
+                ui.columns(2, |columns| {
+                    self.pattern_panel(&mut columns[0], &due, italian);
+                    self.progress_panel(&mut columns[1], italian);
                 });
-                ui.add_space(9.0);
+            } else {
+                self.pattern_panel(ui, &due, italian);
+                ui.add_space(8.0);
+                self.progress_panel(ui, italian);
             }
-        }
-        if !wide {
-            ui.add_space(12.0);
+        } else if !self.events.is_empty() {
             self.progress_panel(ui, italian);
         }
         action
@@ -691,166 +704,229 @@ impl Training {
         ui: &mut egui::Ui,
         board: &Board,
         platform: &Platform,
-        due: &[TrainingCard],
+        session: &[TrainingCard],
         italian: bool,
     ) -> Option<TrainingAction> {
-        let border = if ui.visuals().dark_mode {
-            Color32::from_rgb(100, 125, 77)
-        } else {
-            Color32::from_rgb(148, 173, 123)
-        };
-        appearance::panel(ui).inner_margin(16).stroke(egui::Stroke::new(1.0_f32, border)).show(ui, |ui| {
-            ui.set_min_width(ui.available_width());
-            let preview = due.first().filter(|_| ui.available_width() >= 300.0);
-            let width = ui.available_width();
-            ui.horizontal_top(|ui| {
-                let art_size = if preview.is_some() { 108.0 } else { 0.0 };
-                let text_width = width - art_size - if preview.is_some() { ui.spacing().item_spacing.x } else { 0.0 };
-                let action = ui.allocate_ui_with_layout(
-                    Vec2::new(text_width, 94.0),
-                    egui::Layout::top_down(egui::Align::Min),
-                    |ui| {
-                        ui.set_width(text_width);
-                        ui.label(RichText::new(tr(italian, "Train from your games", "Allenati dalle tue partite")).size(26.0).strong());
-                        ui.add_space(3.0);
-                        if !self.ready {
-                            if self.pending.is_some() {
-                                ui.horizontal_wrapped(|ui| {
-                                    ui.spinner();
-                                    ui.label(tr(italian, "Finding practice positions…", "Ricerca delle posizioni…"));
-                                });
-                            } else if ui.button(tr(italian, "Try again", "Riprova")).clicked() {
-                                self.error.clear();
-                                self.prepare_queue(ui.ctx(), platform);
-                            }
-                        } else if self.cards.is_empty() {
-                            ui.label(tr(
-                                italian,
-                                "Review a game and choose your side under “Review as” to get practice positions.",
-                                "Revisiona una partita e scegli il tuo colore in «Rivedi come» per ottenere esercizi.",
-                            ));
-                            ui.add_space(6.0);
-                            if ui.add(appearance::primary(tr(italian, "Open library", "Apri archivio"))).clicked() {
-                                return Some(TrainingAction::OpenLibrary);
-                            }
-                        } else if due.is_empty() {
-                            ui.label(tr(italian, "You’re caught up. Positions return when they’re due for another try.", "Hai completato il ripasso. Le posizioni torneranno quando sarà il momento di riprovarle."));
-                        } else {
-                            let count = due.len().min(5);
-                            let summary = match (italian, count) {
-                                (true, 1) => "1 posizione nella prossima sessione".to_owned(),
-                                (true, _) => format!("{count} posizioni nella prossima sessione"),
-                                (false, 1) => "1 position in your next session".to_owned(),
-                                (false, _) => format!("{count} positions in your next session"),
-                            };
-                            ui.label(summary);
-                            ui.add_space(5.0);
-                            if ui.add(appearance::primary(tr(italian, "Start session", "Inizia sessione"))).clicked() {
-                                self.begin(mixed_training_session(due, 5));
-                            }
-                        }
-                        None
-                    },
-                ).inner;
-                if let Some(card) = preview {
-                    board.show(ui, BoardView {
-                        fen: &card.fen,
-                        size: art_size,
-                        flipped: card.result.color == Color::Black,
-                        last: "",
-                        best: "",
-                        selected: None,
-                        quality: None,
-                        transition: None,
-                        check: false,
-                        mate: false,
-                    });
+        let dark = ui.visuals().dark_mode;
+        let fill = if dark { Color32::from_rgb(42, 62, 34) } else { ui.visuals().window_fill };
+        let border = if dark { Color32::from_rgb(88, 116, 70) } else { ui.visuals().extreme_bg_color };
+        appearance::panel(ui)
+            .fill(fill)
+            .stroke(egui::Stroke::new(1.0_f32, border))
+            .inner_margin(16)
+            .show(ui, |ui| {
+                let width = ui.available_width();
+                ui.set_min_width(width);
+                let preview_size = if width >= 540.0 { 156.0 } else { 96.0 };
+                let preview = session.first().filter(|_| width >= 310.0);
+                ui.horizontal_top(|ui| {
+                    let art = preview.map_or(0.0, |_| preview_size + ui.spacing().item_spacing.x);
+                    let text_width = width - art;
+                    let action = ui
+                        .allocate_ui_with_layout(
+                            Vec2::new(text_width, preview.map_or(0.0, |_| preview_size)),
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                ui.set_width(text_width);
+                                if preview.is_some() && width >= 540.0 {
+                                    ui.add_space(14.0);
+                                }
+                                if !self.ready {
+                                    ui.label(title(tr(italian, "Next session", "Prossima sessione"), 25.0));
+                                    if self.pending.is_some() {
+                                        ui.label(tr(
+                                            italian,
+                                            "Finding practice positions…",
+                                            "Ricerca delle posizioni…",
+                                        ));
+                                    } else if ui.add(appearance::primary(tr(italian, "Try again", "Riprova"))).clicked() {
+                                        self.error.clear();
+                                        self.prepare_queue(ui.ctx(), platform);
+                                    }
+                                } else if self.cards.is_empty() {
+                                    ui.label(title(tr(italian, "Practice from your games", "Allenati dalle tue partite"), 25.0));
+                                    ui.label(tr(
+                                        italian,
+                                        "Review a game and choose your side under “Review as” to get practice positions.",
+                                        "Revisiona una partita e scegli il tuo colore in «Rivedi come» per ottenere esercizi.",
+                                    ));
+                                    if ui.add(appearance::primary(tr(italian, "Open library", "Apri archivio"))).clicked() {
+                                        return Some(TrainingAction::OpenLibrary);
+                                    }
+                                } else if session.is_empty() {
+                                    ui.label(title(tr(italian, "You’re caught up", "Ripasso completato"), 25.0));
+                                    ui.label(tr(
+                                        italian,
+                                        "Positions return when they’re due for another try.",
+                                        "Le posizioni torneranno quando sarà il momento di riprovarle.",
+                                    ));
+                                } else {
+                                    ui.label(title(tr(italian, "Next session", "Prossima sessione"), 25.0));
+                                    let count = session.len();
+                                    ui.label(match (italian, count) {
+                                        (true, 1) => "1 posizione dalle tue partite".to_owned(),
+                                        (true, _) => format!("{count} posizioni dalle tue partite"),
+                                        (false, 1) => "1 position from your games".to_owned(),
+                                        (false, _) => format!("{count} positions from your games"),
+                                    });
+                                    if ui.add(appearance::primary(tr(italian, "Start session", "Inizia sessione"))).clicked() {
+                                        self.begin(session.to_vec());
+                                    }
+                                }
+                                None
+                            },
+                        )
+                        .inner;
+                    if let Some(card) = preview {
+                        board.show(ui, BoardView {
+                            fen: &card.fen,
+                            size: preview_size,
+                            flipped: card.result.color == Color::Black,
+                            last: "",
+                            best: "",
+                            selected: None,
+                            quality: None,
+                            transition: None,
+                            check: false,
+                            mate: false,
+                        });
+                    }
+                    action
+                })
+                .inner
+            })
+            .inner
+    }
+
+    fn pattern_panel(&mut self, ui: &mut egui::Ui, due: &[TrainingCard], italian: bool) {
+        panel(ui, |ui| {
+            ui.label(title(
+                tr(italian, "Practice by pattern", "Allenati per schema"),
+                21.0,
+            ));
+            for pattern in TRAINING_FOCUSES {
+                if !self.cards.iter().any(|card| card.pattern == pattern) {
+                    continue;
                 }
-                action
-            }).inner
-        }).inner
+                let available = due.iter().filter(|card| card.pattern == pattern).count();
+                ui.separator();
+                let open = ui
+                    .with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let open = ui
+                            .add_enabled(
+                                available > 0,
+                                egui::Button::new(tr(italian, "Practice", "Allenati"))
+                                    .wrap_mode(egui::TextWrapMode::Extend),
+                            )
+                            .clicked();
+                        ui.vertical(|ui| {
+                            ui.set_min_width(ui.available_width());
+                            ui.strong(focus_name(pattern, italian));
+                            let queue = match (italian, available) {
+                                (true, 0) => "Da ripassare più avanti".to_owned(),
+                                (false, 0) => "Due later".to_owned(),
+                                (true, _) => format!("Pronte: {available}"),
+                                (false, _) => format!("{available} ready"),
+                            };
+                            ui.label(RichText::new(queue).size(13.0));
+                        });
+                        open
+                    })
+                    .inner;
+                if open {
+                    self.begin(
+                        due.iter()
+                            .filter(|card| card.pattern == pattern)
+                            .take(5)
+                            .cloned()
+                            .collect(),
+                    );
+                    break;
+                }
+            }
+        });
     }
 
     fn progress_panel(&self, ui: &mut egui::Ui, italian: bool) {
         panel(ui, |ui| {
-            ui.heading(tr(italian, "Progress over time", "Progressi nel tempo"));
-            ui.add_space(4.0);
+            ui.label(title(
+                tr(italian, "First-try results", "Risultati al primo tentativo"),
+                21.0,
+            ));
             let trends = practice_trends(&self.events);
             if trends.is_empty() {
                 ui.label(tr(
                     italian,
-                    "Complete a session to track how often you solve a position on the first try.",
-                    "Completa una sessione per vedere quante posizioni risolvi al primo tentativo.",
-                ));
-            } else {
-                ui.small(tr(
-                    italian,
-                    "Solved on the first try",
-                    "Risolte al primo tentativo",
+                    "Complete a session to see which patterns you solve on your first try.",
+                    "Completa una sessione per vedere quali schemi risolvi al primo tentativo.",
                 ));
             }
             for trend in trends {
+                ui.separator();
+                ui.strong(focus_name(trend.pattern, italian));
+                let recent = format!("{}/{}", trend.recent, trend.recent_total);
                 ui.horizontal_wrapped(|ui| {
-                    ui.strong(focus_name(trend.pattern, italian));
-                    ui.small(format!("{}/{}", trend.recent, trend.recent_total));
+                    ui.label(
+                        RichText::new(format!("{} {recent}", tr(italian, "Recent", "Recenti")))
+                            .size(13.0),
+                    );
+                    if trend.earlier_total > 0 {
+                        ui.label(
+                            RichText::new(format!(
+                                "{} {}/{}",
+                                tr(italian, "Earlier", "Prima"),
+                                trend.earlier,
+                                trend.earlier_total
+                            ))
+                            .size(13.0),
+                        );
+                    }
                     if let Some(delta) = trend.delta {
-                        ui.small(format!("{delta:+} pp"));
+                        ui.label(RichText::new(format!("{delta:+} pp")).size(13.0));
                     }
                 });
-                ui.add(
-                    egui::ProgressBar::new(trend.recent as f32 / trend.recent_total as f32)
-                        .fill(appearance::ACCENT)
-                        .desired_height(5.0),
-                );
-                if trend.earlier_total > 0 {
-                    ui.small(format!(
-                        "{} {}/{}",
-                        tr(italian, "Earlier", "Prima"),
-                        trend.earlier,
-                        trend.earlier_total
-                    ));
-                }
-                ui.add_space(6.0);
+                segments(ui, trend.recent_total, trend.recent);
             }
         });
     }
-    fn exercise_heading(&self, ui: &mut egui::Ui, card: &TrainingCard, italian: bool) {
-        let index = self.data.index + 1;
+
+    fn practice_header(&self, ui: &mut egui::Ui, card: &TrainingCard, italian: bool) -> bool {
+        let index = self.data.index;
         let total = self.data.session.len();
-        let completed = self.data.index
-            + usize::from(matches!(
-                self.data.state,
-                PracticeState::Correct | PracticeState::Revealed
-            ));
+        let back = ui
+            .horizontal_wrapped(|ui| {
+                let back = ui
+                    .button(tr(italian, "‹ Training", "‹ Allenamento"))
+                    .clicked();
+                ui.label(format!(
+                    "{} {} / {total}",
+                    tr(italian, "Position", "Posizione"),
+                    index + 1,
+                ));
+                back
+            })
+            .inner;
+        segments(ui, total, index + 1);
         ui.horizontal_wrapped(|ui| {
-            ui.strong(focus_name(card.pattern, italian));
-            ui.small(format!("{index} / {total}"));
-        });
-        ui.add(
-            egui::ProgressBar::new(completed as f32 / total as f32)
-                .fill(appearance::ACCENT)
-                .desired_height(4.0),
-        );
-        ui.add_space(7.0);
-        let state = self.data.state;
-        ui.heading(match state {
-            PracticeState::Checking => {
-                tr(italian, "Checking your move…", "Controllo la tua mossa…")
-            }
-            PracticeState::Correct => tr(italian, "Well found!", "Ben trovato!"),
-            PracticeState::Missed => tr(
-                italian,
-                "There is a better choice",
-                "C’è una scelta migliore",
-            ),
-            PracticeState::Revealed => tr(italian, "The move to find", "La mossa da trovare"),
-            _ => tr(italian, "Find a better move", "Trova una mossa migliore"),
+            ui.label(title(focus_name(card.pattern, italian), 22.0));
+            let label = if card.result.color == Color::White {
+                tr(italian, "Play as White", "Giochi con il Bianco")
+            } else {
+                tr(italian, "Play as Black", "Giochi con il Nero")
+            };
+            egui::Frame::new()
+                .fill(ui.visuals().extreme_bg_color)
+                .corner_radius(6)
+                .inner_margin(egui::Margin::symmetric(8, 3))
+                .show(ui, |ui| ui.label(RichText::new(label).size(13.0)));
         });
         ui.label(prompt(card.pattern, italian));
-        ui.small(match card.result.color {
-            Color::White => tr(italian, "Play as White", "Giochi con il Bianco"),
-            Color::Black => tr(italian, "Play as Black", "Giochi con il Nero"),
-        });
+        back
+    }
+
+    fn back_to_training(&mut self, ui: &egui::Ui, platform: &Platform) {
+        self.begin(Vec::new());
+        self.prepare_queue(ui.ctx(), platform);
     }
 
     fn exercise(
@@ -862,80 +938,103 @@ impl Training {
         italian: bool,
     ) -> Option<TrainingAction> {
         let state = self.data.state;
-        if state == PracticeState::Revealed
-            && let Some(solution) = play_uci(&card.fen, &card.result.best)
-        {
-            ui.strong(&solution.san);
-        }
-        if state == PracticeState::Missed
-            && let Some(reply) = self.data.reply.get(self.data.reply_index.unwrap_or(0))
-        {
-            ui.label(&reply.text);
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .button(tr(italian, "Play reply", "Mostra risposta"))
-                    .clicked()
-                {
-                    let starting = self.data.reply_index.is_none();
-                    let next = self
-                        .data
-                        .reply_index
-                        .map_or(0, |index| (index + 1) % self.data.reply.len());
-                    let step = &self.data.reply[next];
-                    self.data.fen.clone_from(&step.fen);
-                    self.data.r#move.clone_from(&step.r#move);
-                    self.data.reply_index = Some(next);
-                    self.motion = if next > 0 || starting {
-                        Some(Instant::now())
+        let action = panel(ui, |ui| {
+            let status = match state {
+                PracticeState::Ready => tr(italian, "Your move", "Tocca a te"),
+                PracticeState::Checking => {
+                    tr(italian, "Checking your move…", "Controllo la tua mossa…")
+                }
+                PracticeState::Correct => tr(italian, "Correct move", "Mossa corretta"),
+                PracticeState::Missed => {
+                    tr(italian, "There’s a better move", "C’è una mossa migliore")
+                }
+                PracticeState::Revealed => tr(italian, "Solution", "Soluzione"),
+                PracticeState::Error => tr(
+                    italian,
+                    "Couldn’t check the move",
+                    "Impossibile controllare la mossa",
+                ),
+            };
+            ui.label(title(status, 23.0).color(feedback_ink(ui, state)));
+            let move_to_show = match state {
+                PracticeState::Correct => Some(&self.data.attempt),
+                PracticeState::Revealed => Some(&card.result.best),
+                _ => None,
+            };
+            if let Some(played) = move_to_show.and_then(|uci| play_uci(&card.fen, uci)) {
+                ui.strong(played.san);
+            }
+            if state == PracticeState::Missed
+                && let Some(reply) = self.data.reply.get(self.data.reply_index.unwrap_or(0))
+            {
+                ui.label(&reply.text);
+                ui.horizontal_wrapped(|ui| {
+                    let active = self.data.reply_index.is_some();
+                    let reply_label = if active {
+                        tr(italian, "Next reply", "Prossima risposta")
                     } else {
-                        None
+                        tr(italian, "Play reply", "Mostra risposta")
                     };
-                    self.dirty = true;
-                }
-                if self.data.reply_index.is_some()
-                    && ui
-                        .button(tr(italian, "Back to your move", "Torna alla tua mossa"))
+                    if ui.button(reply_label).clicked() {
+                        let next = self
+                            .data
+                            .reply_index
+                            .map_or(0, |index| (index + 1) % self.data.reply.len());
+                        let step = &self.data.reply[next];
+                        self.data.fen.clone_from(&step.fen);
+                        self.data.r#move.clone_from(&step.r#move);
+                        self.data.reply_index = Some(next);
+                        self.motion = (next > 0 || !active).then(Instant::now);
+                        self.dirty = true;
+                    }
+                    if active
+                        && ui
+                            .button(tr(italian, "Back to your move", "Torna alla tua mossa"))
+                            .clicked()
+                    {
+                        self.data.fen.clone_from(&self.data.reply[0].before_fen);
+                        self.data.r#move.clone_from(&self.data.attempt);
+                        self.data.reply_index = None;
+                        self.motion = None;
+                        self.dirty = true;
+                    }
+                });
+            }
+            if state != PracticeState::Checking {
+                ui.add_space(2.0);
+                ui.horizontal_wrapped(|ui| {
+                    if matches!(
+                        state,
+                        PracticeState::Correct | PracticeState::Missed | PracticeState::Revealed
+                    ) {
+                        let label = if self.data.index + 1 == self.data.session.len() {
+                            tr(italian, "Finish", "Termina")
+                        } else {
+                            tr(italian, "Next position", "Prossima posizione")
+                        };
+                        if ui.add(appearance::primary(label)).clicked() {
+                            self.advance();
+                        }
+                    }
+                    if matches!(
+                        state,
+                        PracticeState::Missed | PracticeState::Revealed | PracticeState::Error
+                    ) && ui.button(tr(italian, "Try again", "Riprova")).clicked()
+                    {
+                        self.reset_board();
+                    }
+                    if matches!(
+                        state,
+                        PracticeState::Ready | PracticeState::Error | PracticeState::Missed
+                    ) && ui
+                        .button(tr(italian, "Show solution", "Mostra soluzione"))
                         .clicked()
-                {
-                    self.data.fen.clone_from(&self.data.reply[0].before_fen);
-                    self.data.r#move.clone_from(&self.data.attempt);
-                    self.data.reply_index = None;
-                    self.motion = None;
-                    self.dirty = true;
-                }
-            });
-        }
-        let mut action = None;
-        ui.horizontal_wrapped(|ui| {
-            if matches!(
-                state,
-                PracticeState::Ready | PracticeState::Error | PracticeState::Missed
-            ) && ui
-                .button(tr(italian, "Show solution", "Mostra soluzione"))
-                .clicked()
-            {
-                self.reveal(ui.ctx(), platform, card);
+                    {
+                        self.reveal(ui.ctx(), platform, card);
+                    }
+                });
             }
-            if matches!(
-                state,
-                PracticeState::Missed | PracticeState::Revealed | PracticeState::Error
-            ) && ui.button(tr(italian, "Try again", "Riprova")).clicked()
-            {
-                self.reset_board();
-            }
-            if matches!(
-                state,
-                PracticeState::Correct | PracticeState::Missed | PracticeState::Revealed
-            ) {
-                let label = if self.data.index + 1 == self.data.session.len() {
-                    tr(italian, "Finish", "Termina")
-                } else {
-                    tr(italian, "Next position", "Prossima posizione")
-                };
-                if ui.add(appearance::primary(label)).clicked() {
-                    self.advance();
-                }
-            }
+            ui.separator();
             if ui
                 .button(tr(
                     italian,
@@ -944,16 +1043,18 @@ impl Training {
                 ))
                 .clicked()
             {
-                action = Some(TrainingAction::OpenSource {
+                Some(TrainingAction::OpenSource {
                     game_id: card.game_id.clone(),
                     ply: card.result.ply,
-                });
+                })
+            } else {
+                None
             }
         });
         if let Some(game) = game {
             ui.collapsing(tr(italian, "Original game", "Partita originale"), |ui| {
                 let header = |name| game.headers.get(name).map_or("?", String::as_str);
-                ui.label(format!("{} — {}", header("White"), header("Black")));
+                ui.label(format!("{} · {}", header("White"), header("Black")));
                 if matches!(state, PracticeState::Correct | PracticeState::Revealed) {
                     let coaching = review_coaching(
                         game,
@@ -979,38 +1080,51 @@ impl Training {
         action
     }
 
-    fn recap(&mut self, ui: &mut egui::Ui, italian: bool) {
+    fn recap(&mut self, ui: &mut egui::Ui, platform: &Platform, italian: bool) {
         let summary = summarize_training(&self.data.session, &self.data.outcomes, &self.history);
+        ui.label(title(
+            tr(italian, "Session complete", "Sessione completata"),
+            30.0,
+        ));
+        ui.add_space(4.0);
         panel(ui, |ui| {
-            ui.label(
-                RichText::new(tr(italian, "Training complete", "Allenamento completato"))
-                    .size(25.0)
-                    .strong(),
-            );
-            ui.add_space(12.0);
-            ui.columns(3, |columns| {
-                for (column, (value, label)) in columns.iter_mut().zip([
-                    (
-                        format!("{}/{}", summary.independent, summary.total),
-                        tr(italian, "First try", "Al primo tentativo"),
+            ui.label(title(
+                format!("{} / {}", summary.independent, summary.total),
+                38.0,
+            ));
+            ui.label(tr(
+                italian,
+                "Solved on the first try",
+                "Risolte al primo tentativo",
+            ));
+            segments(ui, summary.total, summary.independent);
+            ui.add_space(4.0);
+            ui.horizontal_wrapped(|ui| {
+                ui.label(format!(
+                    "{} · {}",
+                    summary.retried,
+                    tr(
+                        italian,
+                        "Solved after a retry",
+                        "Risolte dopo un altro tentativo"
                     ),
-                    (
-                        summary.retried.to_string(),
-                        tr(italian, "After a retry", "Dopo un tentativo"),
-                    ),
-                    (
-                        summary.assisted.to_string(),
-                        tr(italian, "Solution shown", "Soluzione mostrata"),
-                    ),
-                ]) {
-                    column.label(RichText::new(value).size(24.0).strong());
-                    column.label(label);
-                }
+                ));
+                ui.label(format!(
+                    "{} · {}",
+                    summary.assisted,
+                    tr(italian, "Solution shown", "Soluzione mostrata"),
+                ));
             });
         });
         if summary.next_due > 0 || !summary.retry.is_empty() {
-            ui.add_space(12.0);
+            ui.add_space(8.0);
             panel(ui, |ui| self.recap_followup(ui, italian, summary));
+        }
+        if ui
+            .button(tr(italian, "Back to training", "Torna all’allenamento"))
+            .clicked()
+        {
+            self.back_to_training(ui, platform);
         }
     }
 
@@ -1020,10 +1134,21 @@ impl Training {
         italian: bool,
         summary: chessash_review_core::TrainingSummary,
     ) {
+        ui.label(title(
+            tr(italian, "Next practice", "Prossimo ripasso"),
+            21.0,
+        ));
         if !summary.retry.is_empty() {
-            ui.strong(tr(italian, "What to revisit", "Da ripassare"));
-            for card in &summary.retry {
-                ui.label(focus_name(card.pattern, italian));
+            for pattern in TRAINING_FOCUSES
+                .into_iter()
+                .filter(|pattern| summary.retry.iter().any(|card| card.pattern == *pattern))
+            {
+                let count = summary
+                    .retry
+                    .iter()
+                    .filter(|card| card.pattern == pattern)
+                    .count();
+                ui.label(format!("{} · {count}", focus_name(pattern, italian)));
             }
         }
         if summary.next_due > 0 {
@@ -1036,14 +1161,11 @@ impl Training {
                     "Ci sono posizioni pronte per riprovare.",
                 ));
             } else if minutes < 60 {
-                ui.label(format!(
-                    "{} · {minutes} min",
-                    tr(italian, "Next practice", "Prossimo ripasso")
-                ));
+                ui.label(format!("{} {minutes} min", tr(italian, "Due in", "Tra")));
             } else {
                 ui.label(format!(
-                    "{} · {} h",
-                    tr(italian, "Next practice", "Prossimo ripasso"),
+                    "{} {} h",
+                    tr(italian, "Due in", "Tra"),
                     minutes.div_ceil(60)
                 ));
             }
@@ -1070,6 +1192,43 @@ impl Drop for Training {
 
 fn setting(store: Option<&Store>, key: &str) -> Option<String> {
     store.and_then(|store| store.local_setting(key).ok().flatten())
+}
+
+fn title(text: impl Into<String>, size: f32) -> RichText {
+    RichText::new(text)
+        .family(egui::FontFamily::Name("ChessAsh bold".into()))
+        .size(size)
+}
+
+fn feedback_ink(ui: &egui::Ui, state: PracticeState) -> Color32 {
+    match (ui.visuals().dark_mode, state) {
+        (true, PracticeState::Correct) => Color32::from_rgb(189, 228, 150),
+        (false, PracticeState::Correct) => Color32::from_rgb(53, 97, 30),
+        (true, PracticeState::Missed) => Color32::from_rgb(246, 202, 135),
+        (false, PracticeState::Missed) => Color32::from_rgb(119, 75, 16),
+        (true, PracticeState::Revealed) => Color32::from_rgb(162, 215, 241),
+        (false, PracticeState::Revealed) => Color32::from_rgb(37, 81, 111),
+        (true, PracticeState::Error) => Color32::from_rgb(253, 168, 151),
+        (false, PracticeState::Error) => Color32::from_rgb(133, 51, 38),
+        _ => ui.visuals().text_color(),
+    }
+}
+
+fn segments(ui: &mut egui::Ui, total: usize, filled: usize) {
+    let (rect, _) =
+        ui.allocate_exact_size(Vec2::new(ui.available_width(), 5.0), egui::Sense::hover());
+    let slot = rect.width() / total.max(1) as f32;
+    for index in 0..total {
+        let min = rect.min + Vec2::new(index as f32 * slot, 0.0);
+        let segment =
+            egui::Rect::from_min_size(min, Vec2::new((slot - 3.0).max(0.0), rect.height()));
+        let color = if index < filled {
+            appearance::ACCENT
+        } else {
+            ui.visuals().extreme_bg_color
+        };
+        ui.painter().rect_filled(segment, 2.0, color);
+    }
 }
 
 fn panel<T>(ui: &mut egui::Ui, content: impl FnOnce(&mut egui::Ui) -> T) -> T {

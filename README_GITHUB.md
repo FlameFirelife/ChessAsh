@@ -1,13 +1,14 @@
-# ChessAsh V1.6
+# ChessAsh
 
-ChessAsh reviews finished games on Windows and Android. V1.6 rebuilds the app in Rust and runs Stockfish 19 Lite natively. Foxash still handles move classification and training rules.
+ChessAsh is a chess review and practice app for Windows and Android. Stockfish 19 Lite runs on your device, and Foxash handles move classification and training rules.
 
-Download ChessAsh V1.6 for Windows x64 or Android ARM64. Install it over your existing copy of ChessAsh to keep your library, reviews and settings. [Download V1.6](https://github.com/FlameFirelife/ChessAsh/releases/tag/V1.6)
+Download ChessAsh for Windows x64 or Android ARM64. Install it over your existing copy to keep your library, reviews and settings. [Download ChessAsh](https://github.com/FlameFirelife/ChessAsh/releases/latest)
 
 ## What it does
 
 - Creates shareable review cards for best moves, mistakes and analysed alternatives, with direct Android sharing.
 - Reviews games with move labels, accuracy scores, explanations and playable engine lines.
+- Lets two players share a board with live move review and save the game to the Library’s PGN collection.
 - Imports Lichess games by username or game link, with separate account collections.
 - Offers ChessAsh or Chess.com move-quality names in Settings.
 - Explains tactical causes such as a defender leaving, an opened line, a fork or a pin, using legal analysed continuations.
@@ -47,7 +48,7 @@ Training uses completed reviews from your side of the game. Practice history sta
 
 Tutor replies support Markdown, with engine-backed coaching and playable legal continuations. Ollama can run locally. API tutoring sends game context, engine findings and recent chat to the provider you select. There is no silent switch to a cloud model. Model explanations can still be wrong.
 
-V1.6 uses a native Rust interface on both platforms. See [SIGNING.md](SIGNING.md) for release signing and Android update identity.
+ChessAsh uses a native Rust interface on both platforms. See [SIGNING.md](SIGNING.md) for release signing and Android update identity.
 
 ## Contributing
 

@@ -1,6 +1,6 @@
 # Signing and installation warnings
 
-The signed V1.6 Android APK uses package ID `dev.flamedev.chessash`, version code 10 and the existing release key. The V1.6 Windows installer is unsigned.
+The signed V1.7 Android APK uses package ID `dev.flamedev.chessash`, version code 11 and the existing release key. The V1.7 Windows installer is unsigned.
 
 Windows release installers are unsigned until a trusted signing identity is configured. The Android release APK is signed with the project's existing update key. Editing the publisher name does not change either status.
 
@@ -25,7 +25,7 @@ The build validates the certificate before packaging, signs `work/native-windows
 
 With no identity configured, `Build-Windows.bat` warns and builds unsigned for local testing. `-RequireSigned` fails before packaging if no usable identity exists. An invalid configured identity stops the build rather than silently producing an unsigned installer.
 
-The published V1.6 Windows installer was built without a trusted signing certificate. The signed build path has not been exercised with a real certificate. Cloud signing services need their own approved account and integration; this local certificate-store setup does not configure those services automatically.
+Cloud signing services need an approved account and their own integration.
 
 [SignPath Foundation](https://signpath.org/apply) accepts applications for free open-source signing, subject to its [conditions and review](https://signpath.org/terms). Its certificate identifies SignPath Foundation as publisher.
 

@@ -12,9 +12,9 @@ Sample games, your opponent's moves and games reviewed from a neutral perspectiv
 
 ## Choose a session
 
-The Training dashboard shows your next session, practice by pattern, and progress over time. Start training opens a mixed session of up to five positions. It starts with a high-priority position and varies the problems and source games that follow.
+The Training dashboard shows your next session, practice by pattern, and first-try results. **Start session** opens a mixed session of up to five positions. It starts with a high-priority position and varies the problems and source games that follow.
 
-Practice this opens a session for one group. Depending on your reviewed games, groups can include undefended pieces, forks, back-rank mates, captures, checks and opponent replies. The app uses specific groups when the saved analysis supports them.
+Choose a pattern to practice one group. Depending on your reviewed games, groups can include undefended pieces, forks, back-rank mates, captures, checks and opponent replies. The app uses specific groups when the saved analysis supports them.
 
 ## Try a move
 
@@ -28,7 +28,7 @@ Open source position takes you directly to that move in the original game review
 
 ## Pick up where you left off
 
-An unfinished session is saved automatically, including the current exercise, recorded answer and reply-preview position. If you close ChessAsh while Training is open, it reopens there. An interrupted analysis restarts from the exercise so an unfinished check does not count as an attempt.
+An unfinished session is saved automatically, including the current exercise, recorded answer and reply-preview position. Open Training again to pick up the saved session. An interrupted analysis restarts from the exercise so an unfinished check does not count as an attempt.
 
 Sessions belong to the active practice profile. Changing accounts uses a separate session. If a source game is removed or reanalysis replaces its exercise, an outdated session is not restored.
 
@@ -44,4 +44,4 @@ Practice history is saved locally for the selected main account. PGNs with an ex
 
 The interface and coaching support English and Italian. Reduced motion also applies to training. Enable Move sounds in Settings for soft wooden taps during moves and reply playback. Standard training runs locally and needs no AI model or API key.
 
-Progress over time shows independent solves by pattern across completed sessions. It compares recent positions with earlier ones and shows a trend after two complete groups of five positions across at least two sessions. Revealed answers do not count as independent solves. With fewer results, you see the recorded counts while more sessions accumulate.
+**First-try results** shows independent solves by pattern across completed sessions. It compares recent positions with earlier ones and shows a trend after two complete groups of five positions across at least two sessions. Revealed answers do not count as independent solves. With fewer results, you see the recorded counts while more sessions accumulate.

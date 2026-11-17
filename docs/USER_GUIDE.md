@@ -8,6 +8,12 @@ Choose **Import game**, select Chess.com or Lichess, then enter a username. Lich
 
 The included sample lets you try a review without importing your own game. Samples do not become personal training exercises.
 
+## Play a live game
+
+Open **Play**, enter names for White and Black, and choose **Start game**. Both players use the same board, and ChessAsh reviews each move as you play. Open **Moves** to revisit a position and **Return to live game** to continue.
+
+Choose **Save to Library** at any point after the first move. ChessAsh creates a PGN entry under **Library → PGN files and samples** with the review available so far. Saving again updates the same entry with any new moves and analysis.
+
 ## Review the turning points
 
 Choose your side under **Review as**, then start a review. Stockfish runs on your device. Completed reviews and notes stay in your local library and can be opened offline. **Reanalyse** starts a new engine review; **Continue review** resumes a paused review.
@@ -16,7 +22,7 @@ Use the arrows or move list to step through the game. The coach explains the mov
 
 **Try again** lets you choose another move. Moves you try receive a temporary review; your original game and notes stay saved. **Show line** previews the engine continuation. Open **Explore** when you want to explore manually.
 
-Mobile review uses a compact navigation bar, with Settings and Import available beside the main navigation. The welcome screen, Library and Training show the full header. The explanation area scrolls internally; very short screens can also scroll the page.
+Mobile review uses a compact navigation bar, with Settings and Import available beside the main navigation. Library, Training and Play show the full header. The explanation area scrolls internally; very short screens can also scroll the page.
 
 ## Practice your mistakes
 

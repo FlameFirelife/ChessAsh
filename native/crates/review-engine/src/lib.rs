@@ -55,6 +55,27 @@ pub fn analyze_game(
     policy: &Foxash,
     game: &Game,
     options: AnalyzeOptions<'_>,
+    on_result: impl FnMut(&MoveReview),
+) -> Result<Review, ReviewError> {
+    analyze(engine, policy, game, options, false, on_result)
+}
+
+pub fn analyze_live_game(
+    engine: &mut UciEngine,
+    policy: &Foxash,
+    game: &Game,
+    options: AnalyzeOptions<'_>,
+    on_result: impl FnMut(&MoveReview),
+) -> Result<Review, ReviewError> {
+    analyze(engine, policy, game, options, true, on_result)
+}
+
+fn analyze(
+    engine: &mut UciEngine,
+    policy: &Foxash,
+    game: &Game,
+    options: AnalyzeOptions<'_>,
+    live: bool,
     mut on_result: impl FnMut(&MoveReview),
 ) -> Result<Review, ReviewError> {
     if game.positions.len() != game.moves.len() + 1 || game.uci_moves.len() != game.moves.len() {
@@ -64,8 +85,13 @@ pub fn analyze_game(
     if options.fresh {
         engine.reset();
     }
+    let existing = if live {
+        options.existing
+    } else {
+        options.existing.or(game.review.as_ref())
+    };
     let mut resumable = (!options.fresh)
-        .then(|| options.existing.or(game.review.as_ref()))
+        .then_some(existing)
         .flatten()
         .filter(|review| {
             review.version == POLICY_VERSION
@@ -79,7 +105,9 @@ pub fn analyze_game(
             .iter()
             .take(game.moves.len())
             .enumerate()
-            .take_while(|(index, result)| result.ply == index + 1)
+            .take_while(|(index, result)| {
+                result.ply == index + 1 && (!live || result.r#move == game.uci_moves[*index])
+            })
             .count(),
     );
     let mut review = Review {
@@ -98,6 +126,10 @@ pub fn analyze_game(
 
     let operation = (|| -> Result<(), ReviewError> {
         for mut result in resumable {
+            if live {
+                review.results.push(result);
+                continue;
+            }
             uci::check_cancelled(options.cancel)?;
             if let Some(facts) = result.facts.as_ref() {
                 let decisions =

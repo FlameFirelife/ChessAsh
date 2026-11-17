@@ -1,4 +1,4 @@
-# ChessAsh V1.6 native builds
+# ChessAsh native builds
 
 The Windows and signed Android releases install over ChessAsh V1.5 and open the existing library automatically. The UI uses the original ChessAsh piece artwork, coach, font families and review layout. Stockfish 19 Lite uses the V1.5 network. Both platforms run the original Foxash review and training rules.
 
@@ -14,7 +14,7 @@ pwsh -File native/scripts/prepare-engines.ps1 -Platform Windows
 .\Build-Windows.bat
 ```
 
-The installer is written to `release\ChessAsh-Setup-1.6.0.exe`. Run it over the existing V1.5 installation with ChessAsh closed. Setup reads the existing library before replacing the old executable. The updated app opens saved games, reviews, notes, preferences, and training data on first launch.
+The installer is written to `release\ChessAsh-Setup-1.7.0.exe`. Close ChessAsh before running the installer. If you are updating from V1.5, Setup reads the old library before replacing the executable. The updated app opens saved games, reviews, notes, preferences, and training data on first launch.
 
 Run `cargo run --manifest-path native/Cargo.toml --bin chessash-native` for development. The default SQLite profile is `%LOCALAPPDATA%\ChessAsh Native`. Set `CHESSASH_NATIVE_DATA` for an isolated profile. To import a V1.5 library from another profile, run `native/migration/Export-Windows.ps1` with `-ProfilePath`, `-OutputPath` and the path to an Electron executable under `-ElectronPath`. Open the exported backup in Settings.
 

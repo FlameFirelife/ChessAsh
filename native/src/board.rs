@@ -1,4 +1,4 @@
-use eframe::egui::{self, Color32, Pos2, Rect, TextureHandle, Vec2};
+use eframe::egui::{self, Color32, Pos2, Rect, TextureHandle, Vec2, epaint::TextShape};
 use shakmaty::{CastlingMode, Position, uci::UciMove};
 use std::collections::HashMap;
 
@@ -763,15 +763,12 @@ fn sacrifice_sequence(ui: &egui::Ui, paint: &egui::Painter, rect: Rect, elapsed:
     let shift = css_keyframes(time, &[(0.08, 8.0), (0.27, 0.0), (0.70, 0.0), (1.0, -5.0)]);
     let width = ui.ctx().content_rect().width();
     let size = (diameter * 0.17).clamp(64.0, 110.0) * scale;
-    let font = (width * 0.03).clamp(17.0, 29.0) * scale;
+    let font = (width * 0.03).clamp(17.0, 29.0);
     let label_color = Color32::from_rgb(239, 255, 249);
-    let title = paint.layout_no_wrap(
-        title.to_owned(),
-        egui::FontId::proportional(font),
-        label_color.gamma_multiply(alpha),
-    );
+    let mut title = spotlight_text(paint, title, font, scale);
+    let title_size = title.galley.size();
     let spacing = 12.0 * scale;
-    let center = center + Vec2::new(0.0, shift - (title.size().y + spacing * 2.0 + 2.0) * 0.5);
+    let center = center + Vec2::new(0.0, shift - (title_size.y + spacing * 2.0 + 2.0) * 0.5);
     let emblem = Rect::from_center_size(center, Vec2::splat(size));
     if let Some(texture) = sacrifice_emblem(ui.ctx()) {
         paint.image(
@@ -781,24 +778,19 @@ fn sacrifice_sequence(ui: &egui::Ui, paint: &egui::Painter, rect: Rect, elapsed:
             Color32::WHITE.gamma_multiply(alpha),
         );
     }
-    let symbol_font = egui::FontId::proportional((width * 0.07).clamp(32.0, 62.0) * scale);
-    paint.text(
-        center + Vec2::new(0.0, 2.0),
-        egui::Align2::CENTER_CENTER,
-        "!!",
-        symbol_font.clone(),
-        Color32::from_rgb(16, 45, 43).gamma_multiply(alpha),
-    );
-    paint.text(
-        center,
-        egui::Align2::CENTER_CENTER,
-        "!!",
-        symbol_font,
-        Color32::from_rgb(236, 255, 249).gamma_multiply(alpha),
-    );
-    let text_origin = egui::pos2(center.x - title.size().x / 2.0, emblem.bottom() + spacing);
-    let rule_y = text_origin.y + title.size().y + spacing;
-    paint.galley(text_origin, title, label_color.gamma_multiply(alpha));
+    let mut symbol = spotlight_text(paint, "!!", (width * 0.07).clamp(32.0, 62.0), scale);
+    symbol.pos = center - symbol.galley.size() / 2.0;
+    let mut shadow = symbol.clone();
+    shadow.pos.y += 2.0;
+    shadow.fallback_color = Color32::from_rgb(16, 45, 43).gamma_multiply(alpha);
+    paint.add(shadow);
+    symbol.fallback_color = Color32::from_rgb(236, 255, 249).gamma_multiply(alpha);
+    paint.add(symbol);
+
+    title.pos = egui::pos2(center.x - title_size.x / 2.0, emblem.bottom() + spacing);
+    let rule_y = title.pos.y + title_size.y + spacing;
+    title.fallback_color = label_color.gamma_multiply(alpha);
+    paint.add(title);
     for offset in 0..24 {
         let from = Pos2::new(center.x + offset as f32 * scale, rule_y);
         let to = Pos2::new(from.x + scale, rule_y);
@@ -813,6 +805,20 @@ fn sacrifice_sequence(ui: &egui::Ui, paint: &egui::Painter, rect: Rect, elapsed:
             egui::Stroke::new(2.0_f32, color),
         );
     }
+}
+
+fn spotlight_text(paint: &egui::Painter, text: &str, font_size: f32, scale: f32) -> TextShape {
+    // Scale the laid-out text so each keyframe can reuse the same rasterized glyphs.
+    let galley = paint.layout_no_wrap(
+        text.to_owned(),
+        egui::FontId::proportional(font_size),
+        Color32::PLACEHOLDER,
+    );
+    let mut shape = TextShape::new(Pos2::ZERO, galley, Color32::WHITE);
+    if scale != 1.0 {
+        shape.transform(egui::emath::TSTransform::from_scaling(scale));
+    }
+    shape
 }
 
 fn css_keyframes(time: f32, stops: &[(f32, f32)]) -> f32 {
@@ -838,7 +844,8 @@ fn css_keyframes(time: f32, stops: &[(f32, f32)]) -> f32 {
 
 #[cfg(test)]
 mod animation_tests {
-    use super::css_keyframes;
+    use super::{css_keyframes, sacrifice_sequence};
+    use eframe::egui::{self, Pos2, Rect, Vec2};
 
     #[test]
     fn spotlight_holds_until_seventy_percent_of_its_runtime() {
@@ -847,6 +854,34 @@ mod animation_tests {
         assert!((css_keyframes(0.68 / 1.75, &opacity) - 1.0).abs() < 0.0001);
         assert!((css_keyframes(0.70, &opacity) - 1.0).abs() < 0.0001);
         assert!(css_keyframes(0.90, &opacity) < 0.85);
+    }
+
+    #[test]
+    fn replaying_spotlight_does_not_upload_new_font_atlas_entries() {
+        let context = egui::Context::default();
+        let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(390.0, 780.0));
+        let board = Rect::from_center_size(screen.center(), Vec2::splat(360.0));
+        let frame = |elapsed| {
+            let output = context.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    max_texture_side: Some(2048),
+                    ..Default::default()
+                },
+                |ui| sacrifice_sequence(ui, &ui.painter_at(board), board, elapsed, "Brilliant"),
+            );
+            output
+                .textures_delta
+                .set
+                .iter()
+                .any(|(id, _)| *id == egui::TextureId::default())
+        };
+        frame(0.75);
+        let upload_frames = (0..6)
+            .flat_map(|replay| (0..70).map(move |step| (step as f32 + replay as f32 / 6.0) * 0.025))
+            .filter(|&elapsed| frame(elapsed))
+            .count();
+        assert_eq!(upload_frames, 0, "replay triggered additional font uploads");
     }
 }
 

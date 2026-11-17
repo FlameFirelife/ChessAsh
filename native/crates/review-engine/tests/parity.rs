@@ -4,8 +4,8 @@ use chessash_review_core::{
 };
 use chessash_review_engine::{
     AlternativeKind, AnalyzeOptions, CoachingLanguage, CoachingOptions, CoachingPack, Foxash,
-    InsightKind, SearchOptions, UciEngine, analyze_game, parse_info, review_coaching,
-    sacrifice_offers, verify_sacrifice,
+    InsightKind, SearchOptions, UciEngine, analyze_game, analyze_live_game, parse_info,
+    review_coaching, sacrifice_offers, verify_sacrifice,
 };
 use shakmaty::{Color, Position};
 use std::{path::PathBuf, sync::atomic::AtomicBool};
@@ -495,6 +495,26 @@ fn stockfish_and_foxash_complete_fresh_and_cancelled_reviews() {
             .iter()
             .all(|result| result.label == classify(result.facts.as_ref().unwrap()))
     );
+    let mut partial = review.clone();
+    partial.completed = false;
+    partial.results.truncate(6);
+    let mut live_plies = Vec::new();
+    let live = analyze_live_game(
+        &mut engine,
+        &foxash,
+        &game,
+        AnalyzeOptions {
+            depth: options.depth,
+            existing: Some(&partial),
+            ..Default::default()
+        },
+        |result| live_plies.push(result.ply),
+    )
+    .unwrap();
+    assert_eq!(live_plies, [7]);
+    assert!(live.completed);
+    assert_eq!(live.results, review.results);
+
     let flag = AtomicBool::new(true);
     let cancelled = AnalyzeOptions {
         cancel: Some(&flag),
