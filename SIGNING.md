@@ -1,6 +1,6 @@
 # Signing and installation warnings
 
-The signed V1.7 Android APK uses package ID `dev.flamedev.chessash`, version code 11 and the existing release key. The V1.7 Windows installer is unsigned.
+The signed V1.7.5 Android APK uses package ID `dev.flamedev.chessash`, version code 12 and the existing release key. The V1.7.5 Windows installer is unsigned.
 
 Windows release installers are unsigned until a trusted signing identity is configured. The Android release APK is signed with the project's existing update key. Editing the publisher name does not change either status.
 

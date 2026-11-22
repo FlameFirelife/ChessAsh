@@ -673,7 +673,7 @@ dependencies = [
 
 [[package]]
 name = "chessash-native"
-version = "1.7.0"
+version = "1.7.5"
 dependencies = [
  "android_logger",
  "chessash-persistence",
@@ -700,7 +700,7 @@ dependencies = [
 
 [[package]]
 name = "chessash-persistence"
-version = "1.7.0"
+version = "1.7.5"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",
@@ -715,7 +715,7 @@ dependencies = [
 
 [[package]]
 name = "chessash-review-core"
-version = "1.7.0"
+version = "1.7.5"
 dependencies = [
  "regex",
  "serde",
@@ -726,7 +726,7 @@ dependencies = [
 
 [[package]]
 name = "chessash-review-engine"
-version = "1.7.0"
+version = "1.7.5"
 dependencies = [
  "chessash-review-core",
  "serde",

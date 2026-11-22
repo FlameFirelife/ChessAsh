@@ -10,7 +10,7 @@ The included sample lets you try a review without importing your own game. Sampl
 
 ## Play a live game
 
-Open **Play**, enter names for White and Black, and choose **Start game**. Both players use the same board, and ChessAsh reviews each move as you play. Open **Moves** to revisit a position and **Return to live game** to continue.
+Open **Play**, enter names for White and Black, and choose **Start game**. Both players use the same board. ChessAsh reviews each move and flips the board to face the player whose turn it is. Open **Moves** to revisit a position and **Return to live game** to continue.
 
 Choose **Save to Library** at any point after the first move. ChessAsh creates a PGN entry under **Library → PGN files and samples** with the review available so far. Saving again updates the same entry with any new moves and analysis.
 

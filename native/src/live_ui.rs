@@ -359,6 +359,9 @@ impl Session {
         let fen = self.live.game().positions.last().expect("live position");
         let captured = board::captured_piece(fen, uci);
         if self.live.play(uci) {
+            if self.live.outcome() == Outcome::Unknown {
+                self.flipped = self.live.position().turn() == shakmaty::Color::Black;
+            }
             self.selected = None;
             self.motion = Some((Instant::now(), captured));
             if view.prefs.sound {

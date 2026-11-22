@@ -1,6 +1,6 @@
 # Explanation evidence
 
-## V1.6 coach
+## Native coach
 
 The native coach in `native/crates/review-engine/src/coaching.rs` gives one short reason above the board. It checks the played move and legal replies for concrete changes such as lost defenders, opened lines, and new threats. It can also explain quiet moves through development, central control or preparation for castling. The coach uses the side selected under **Review as** to say “you” or “your opponent”. Linked squares connect the explanation to the board.
 
